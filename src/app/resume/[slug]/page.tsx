@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { FileText, Copy, Check, Eye, ExternalLink, AlertCircle } from "lucide-react";
 
-const BASE = process.env.NEXT_API_URL ?? "http://localhost:4000";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 interface PublicCV {
   title: string;
