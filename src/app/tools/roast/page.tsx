@@ -19,7 +19,7 @@ const ACCEPT = ".pdf,.txt";
 async function extractText(file: File): Promise<string> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/resumes/tools/parse-resume`, { method: "POST", body: form });
+  const res = await fetch(`${process.env.NEXT_API_URL ?? "http://localhost:4000"}/api/resumes/tools/parse-resume`, { method: "POST", body: form });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || "Failed to read file.");
   return json.text as string;
