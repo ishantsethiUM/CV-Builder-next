@@ -5,7 +5,7 @@
 // Other routes: /api/resumes  /api/ai  /api/tools
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const BASE = process.env.NEXT_API_URL ?? "http://localhost:4000";
 const AUTH = `${BASE}/api/auth`;
 const API  = `${BASE}/api`;
 
