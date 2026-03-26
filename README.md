@@ -1,4 +1,4 @@
-# Folio — Frontend Only
+# FitRezume — Frontend Only
 
 Premium CV Builder frontend. No backend. Wire your own API calls where marked with `// TODO`.
 

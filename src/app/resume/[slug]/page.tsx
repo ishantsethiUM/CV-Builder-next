@@ -55,7 +55,7 @@ export default function PublicResumePage({ params }: { params: { slug: string } 
           <div style={{ width: 26, height: 26, background: GOLD, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 4 }}>
             <FileText size={13} color={FOREST} />
           </div>
-          <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 17, fontWeight: 700, color: "#fff" }}>Folio</span>
+          <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 17, fontWeight: 700, color: "#fff" }}>FitRezume</span>
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {!loading && !notFound && (
@@ -207,12 +207,12 @@ export default function PublicResumePage({ params }: { params: { slug: string } 
               {/* Viewer count + CTA */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, margin: "18px 0 10px" }}>
                 <Eye size={12} color={MUTED} />
-                <span style={{ fontSize: 11, color: MUTED, fontFamily: "'IBM Plex Mono', monospace" }}>Shared via Folio</span>
+                <span style={{ fontSize: 11, color: MUTED, fontFamily: "'IBM Plex Mono', monospace" }}>Shared via FitRezume</span>
               </div>
 
               <div style={{ padding: "24px 28px", background: "#fff", borderRadius: 8, border: `1px solid ${BORDER}`, textAlign: "center" }}>
                 <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 20, fontWeight: 700, color: FOREST, marginBottom: 6 }}>Build your own AI-powered CV</p>
-                <p style={{ fontSize: 13, color: MUTED, marginBottom: 18 }}>Join 250,000+ students who landed jobs using Folio.</p>
+                <p style={{ fontSize: 13, color: MUTED, marginBottom: 18 }}>Join 250,000+ students who landed jobs using FitRezume.</p>
                 <Link href="/auth" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 22px", borderRadius: 6, background: FOREST, color: "#F8F7F2", textDecoration: "none", fontSize: 13, fontWeight: 700 }}>
                   Get Started Free <ExternalLink size={13} />
                 </Link>

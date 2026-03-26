@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createResume, updateResume, getResume, aiBullets, aiImprove } from "@/lib/api";
 import { useCredits } from "@/contexts/CreditsContext";
 import {
@@ -50,16 +50,16 @@ const TEMPLATES = [
 
 // Brand-aligned theme constants
 const THEME = {
-  primary: "#1A3628",    // --forest
-  gold: "#C9A96E",       // --gold
-  darkBg: "#111110",     // --charcoal
+  primary: "#0F172A",    // --forest (deep navy)
+  gold: "#2563EB",       // --gold (royal blue)
+  darkBg: "#1E293B",     // --charcoal
   surface: "#FFFFFF",    // --white
-  background: "#F8F7F2", // --cream
-  border: "#E2DFD6",     // --border
-  textMain: "#1E1E18",   // --ink
-  textMuted: "#74746A",  // --muted
-  danger: "#C94E2A",     // --ember
-  success: "#2d7a4f",    // green
+  background: "#F8FAFF", // --cream
+  border: "#E2E8F0",     // --border
+  textMain: "#0F172A",   // --ink
+  textMuted: "#64748B",  // --muted
+  danger: "#DC2626",     // --ember
+  success: "#10B981",    // green
   fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
 };
 
@@ -73,7 +73,7 @@ function EditableSpan({
   placeholder?: string; multiline?: boolean; className?: string;
 }) {
   const [editing, setEditing] = useState(false);
-  const GOLD = "#C9A96E";
+  const GOLD = "#2563EB";
 
   const hoverStyle: React.CSSProperties = {
     cursor: "text",
@@ -1243,6 +1243,7 @@ function AIBox({ context, targetId, cv, setCV, onClose }: { context: string, tar
 // ── Main Builder Component ──────────────────────────────────────────────────
 function BuilderInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const resumeId = searchParams.get("id");
 
   const [cv, setCV] = useState<CV>(INIT);
@@ -1256,7 +1257,7 @@ function BuilderInner() {
   const [aiOpen, setAiOpen] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const previewRef = useRef<HTMLDivElement>(null);
-  const { credits, openBuyModal, doTrackExport, deductExportCredit } = useCredits();
+  const { credits, openBuyModal, doTrackExport, deductExportCredit, deductCvCredit } = useCredits();
   const dragExpIdx = useRef(-1);
   const dragExpOverIdx = useRef(-1);
   const dragEduIdx = useRef(-1);
@@ -1285,25 +1286,60 @@ function BuilderInner() {
       <title>${cv.personal.name || "CV"}</title>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
       <style>
-        @page { size: A4; margin: 0; }
+        @page { size: A4 portrait; margin: 0; }
         *, *::before, *::after { box-sizing: border-box; }
-        body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        html { margin: 0; padding: 0; }
+        body {
+          margin: 0; padding: 0;
+          width: 210mm;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        /* Keep sections together — avoid mid-section page breaks */
+        div[style*="margin-bottom: 18"], div[style*="marginBottom: 18"],
+        div[style*="margin-bottom: 16"], div[style*="marginBottom: 16"] {
+          page-break-inside: avoid;
+        }
+        h1, h2, h3 { page-break-after: avoid; }
       </style>
     </head><body>${el.innerHTML}</body></html>`;
+    // Open in hidden iframe via blob URL and trigger browser print-to-PDF (A4, multi-page)
     const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url, "_blank");
-    if (!win) return;
+    const blobUrl = URL.createObjectURL(blob);
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;";
+    iframe.src = blobUrl;
+    iframe.onload = () => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        URL.revokeObjectURL(blobUrl);
+      }, 3000);
+    };
+    document.body.appendChild(iframe);
+    // Deduct export credit
     deductExportCredit();
     doTrackExport(resumeId ?? undefined).catch(() => null);
-    setTimeout(() => { win.focus(); win.print(); URL.revokeObjectURL(url); }, 900);
   };
 
   const handleSave = async () => {
+    // Block new CV creation if out of CV credits
+    if (!resumeId && credits !== null && credits.cvCredits === 0) {
+      openBuyModal();
+      return;
+    }
     setSaveState("saving");
     try {
       const payload = { data: cv as unknown as Record<string, unknown>, template, title: cv.personal.name || "My CV" };
-      resumeId ? await updateResume(resumeId, payload) : await createResume(payload);
+      if (resumeId) {
+        await updateResume(resumeId, payload);
+      } else {
+        const created = await createResume(payload);
+        deductCvCredit();
+        // Update URL so subsequent saves update the same resume (not create duplicates)
+        router.replace(`/builder?id=${created.id}`);
+      }
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2500);
     } catch {
@@ -1348,48 +1384,78 @@ function BuilderInner() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: THEME.background, fontFamily: THEME.fontFamily }}>
       
-      {/* ── HEADER (Corporate Studio Style) ── */}
-      <header style={{ position: "sticky", top: 0, zIndex: 40, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", height: 60, background: THEME.darkBg, borderBottom: `1px solid rgba(255,255,255,0.1)`, color: "#fff" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 6, color: "#94A3B8", textDecoration: "none", fontSize: 13, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            <ChevronLeft size={16} /> Dashboard
+      {/* ── HEADER ── */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 40,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 16px", height: 56,
+        background: THEME.darkBg, borderBottom: "1px solid rgba(255,255,255,0.1)",
+        color: "#fff", gap: 12, overflow: "hidden",
+      }}>
+
+        {/* LEFT: Back + doc name */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, minWidth: 0 }}>
+          <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 4, color: "#94A3B8", textDecoration: "none", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", whiteSpace: "nowrap", flexShrink: 0 }}>
+            <ChevronLeft size={14} /> Back
           </Link>
-          <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.2)" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <FileText size={18} color={THEME.gold} />
-            <input value={cv.personal.name || "Untitled Document"} onChange={e => upP("name", e.target.value)}
-              style={{ border: "none", background: "transparent", fontSize: 16, fontWeight: 600, color: "#fff", outline: "none", minWidth: 200, fontFamily: THEME.fontFamily }} />
-          </div>
+          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.18)", flexShrink: 0 }} />
+          <FileText size={15} color={THEME.gold} style={{ flexShrink: 0 }} />
+          <input
+            value={cv.personal.name || "Untitled"}
+            onChange={e => upP("name", e.target.value)}
+            style={{ border: "none", background: "transparent", fontSize: 14, fontWeight: 600, color: "#fff", outline: "none", width: 160, minWidth: 80, fontFamily: THEME.fontFamily }}
+          />
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {/* Template Selector */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, borderRight: "1px solid rgba(255,255,255,0.12)", paddingRight: 16 }}>
+        {/* RIGHT: controls — all compact */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+
+          {/* Template dropdown — replaces 8-button row */}
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <Layout size={13} color="#94A3B8" />
-            <div style={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: "5px", padding: 2 }}>
+            <select
+              value={template}
+              onChange={e => setTemplate(e.target.value)}
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", borderRadius: 4, padding: "5px 6px", fontSize: 12, fontWeight: 600, cursor: "pointer", outline: "none", fontFamily: THEME.fontFamily }}
+            >
               {TEMPLATES.map(t => (
-                <button key={t.id} onClick={() => setTemplate(t.id)}
-                  style={{ padding: "5px 13px", borderRadius: "3px", fontSize: 11, fontWeight: 700, border: "none", background: template === t.id ? THEME.gold : "transparent", color: template === t.id ? THEME.darkBg : "#94A3B8", cursor: "pointer", transition: "all 0.15s", letterSpacing: "0.3px" }}>
-                  {t.label}
-                </button>
+                <option key={t.id} value={t.id} style={{ background: "#1E293B", color: "#fff" }}>{t.label}</option>
               ))}
-            </div>
+            </select>
           </div>
 
-          <button onClick={() => setShowATS(a => !a)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: "4px", background: showATS ? "rgba(201,169,110,.18)" : "rgba(255,255,255,.06)", border: `1px solid ${showATS ? THEME.gold : "rgba(255,255,255,.2)"}`, color: showATS ? THEME.gold : "#94A3B8", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}>
-            <BarChart2 size={15} /> ATS Check
+          <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.12)" }} />
+
+          {/* ATS */}
+          <button onClick={() => setShowATS(a => !a)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 4, background: showATS ? "rgba(37,99,235,.22)" : "rgba(255,255,255,.06)", border: `1px solid ${showATS ? THEME.gold : "rgba(255,255,255,.18)"}`, color: showATS ? THEME.gold : "#94A3B8", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+            <BarChart2 size={13} /> ATS
           </button>
 
-          <button onClick={() => setShowPreview(p => !p)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: "4px", background: "transparent", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            {showPreview ? <EyeOff size={16} /> : <Eye size={16} />} {showPreview ? "Editor Mode" : "Split View"}
+          {/* Preview toggle — icon only */}
+          <button onClick={() => setShowPreview(p => !p)} title={showPreview ? "Editor only" : "Split view"} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "5px 8px", borderRadius: 4, background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,0.18)", color: "#94A3B8", cursor: "pointer" }}>
+            {showPreview ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
 
-          <button onClick={handleSave} disabled={saveState === "saving"} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", borderRadius: "4px", background: saveState === "saved" ? THEME.success : saveState === "error" ? THEME.danger : THEME.primary, color: "#fff", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
-            {saveState === "saving" ? "Saving…" : saveState === "saved" ? <><Check size={16} />Saved</> : saveState === "error" ? "Error" : <><Save size={16} />Save Progress</>}
+          {/* Credits badge */}
+          {credits !== null && (
+            <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 4, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.1)", fontSize: 11, fontFamily: "'IBM Plex Mono', monospace", whiteSpace: "nowrap" }}>
+              <span style={{ color: credits.cvCredits === 0 ? "#F87171" : credits.cvCredits <= 1 ? "#FCD34D" : "#6EE7B7" }}>CV:{credits.cvCredits}</span>
+              <span style={{ color: "rgba(255,255,255,.25)" }}>|</span>
+              <span style={{ color: credits.exportCredits === 0 ? "#F87171" : credits.exportCredits <= 1 ? "#FCD34D" : "#6EE7B7" }}>Ex:{credits.exportCredits}</span>
+            </div>
+          )}
+
+          {/* Save */}
+          <button onClick={handleSave} disabled={saveState === "saving"} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 14px", borderRadius: 4, background: saveState === "saved" ? THEME.success : saveState === "error" ? THEME.danger : THEME.primary, color: "#fff", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
+            {saveState === "saving" ? "Saving…" : saveState === "saved" ? <><Check size={13} />Saved</> : saveState === "error" ? "Error!" : <><Save size={13} />Save</>}
           </button>
 
-          <button onClick={handleDownload} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 20px", borderRadius: "4px", background: "#fff", color: THEME.darkBg, fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}>
-            <Download size={16} /> Export PDF
+          {/* Export */}
+          <button
+            onClick={credits !== null && credits.exportCredits === 0 ? openBuyModal : handleDownload}
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 14px", borderRadius: 4, background: credits !== null && credits.exportCredits === 0 ? "#374151" : "#fff", color: credits !== null && credits.exportCredits === 0 ? "#9CA3AF" : THEME.darkBg, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
+            title={credits !== null && credits.exportCredits === 0 ? "No export credits — click to buy" : "Download CV"}>
+            <Download size={13} /> {credits !== null && credits.exportCredits === 0 ? "Buy Credits" : "Export PDF"}
           </button>
         </div>
       </header>
@@ -1420,7 +1486,7 @@ function BuilderInner() {
                   <div><label style={labelStyle}>Phone Number</label><input style={inputStyle} value={cv.personal.phone} onChange={e => upP("phone", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
                   <div><label style={labelStyle}>Location (City, Country)</label><input style={inputStyle} value={cv.personal.location} onChange={e => upP("location", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
                   <div><label style={labelStyle}>LinkedIn Profile</label><input style={inputStyle} value={cv.personal.linkedin} onChange={e => upP("linkedin", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
-                  <div><label style={labelStyle}>GitHub / Portfolio</label><input style={inputStyle} value={cv.personal.github} onChange={e => upP("github", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
+                  <div><label style={labelStyle}>GitHub / PortFitRezume</label><input style={inputStyle} value={cv.personal.github} onChange={e => upP("github", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
                 </div>
                 <div><label style={labelStyle}>Personal Website</label><input style={inputStyle} value={cv.personal.website} onChange={e => upP("website", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
                 <div>
@@ -1663,8 +1729,12 @@ function BuilderInner() {
             </div>
 
             <div style={{ flex: 1, overflow: "auto", display: "flex", justifyContent: "center", padding: "40px" }}>
-              <div ref={previewRef} style={{ width: "210mm", minHeight: "297mm", background: "#fff", boxShadow: "0 10px 30px rgba(0, 0, 0, 0.15)", overflow: "hidden" }}>
-                <Preview cv={cv} template={template} setCV={setCV} />
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <div ref={previewRef} style={{ width: "210mm", minHeight: "297mm", background: "#fff", boxShadow: "0 4px 24px rgba(0,0,0,0.18)" }}>
+                  <Preview cv={cv} template={template} setCV={setCV} />
+                </div>
+                {/* Page-break indicator lines — repeats every 297mm, pointer-events: none so clicks pass through */}
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none", backgroundImage: "repeating-linear-gradient(transparent 0, transparent calc(297mm - 2px), rgba(59,130,246,0.35) calc(297mm - 2px), rgba(59,130,246,0.35) calc(297mm))", backgroundSize: "100% 297mm", zIndex: 10 }} />
               </div>
             </div>
           </div>

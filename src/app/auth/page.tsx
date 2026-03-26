@@ -43,16 +43,16 @@ export default function AuthPage() {
   const handleKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSubmit(); };
 
   return (
-    <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--cream)" }}>
+    <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--cream)", overflowX: "hidden" }}>
 
       {/* ── NAV (matches landing page) */}
       <nav style={{ borderBottom: "1px solid var(--border)", background: "var(--cream)" }}>
-        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 40px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 66 }}>
+        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none" }}>
             <div style={{ width: 34, height: 34, background: "var(--forest)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3 }}>
               <FileText size={16} color="var(--gold)" />
             </div>
-            <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, color: "var(--forest)" }}>Folio</span>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, color: "var(--forest)" }}>FitRezume</span>
           </Link>
           <div style={{ display: "flex", gap: 2 }}>
             {([["Templates", "/templates"], ["Tools", "/tools/roast"]] as const).map(([l, h]) => (
@@ -86,7 +86,7 @@ export default function AuthPage() {
               {mode === "login" ? "Welcome back" : "Start building"}
             </h1>
             <p style={{ fontSize: 14.5, color: "var(--muted)", lineHeight: 1.6 }}>
-              {mode === "login" ? "Sign in to access your CVs and tools." : "Join 250,000+ students building better CVs."}
+              {mode === "login" ? "Sign in to access your CVs and tools." : "Join 2,50,000+ Indian students building better CVs."}
             </p>
           </div>
 
@@ -116,12 +116,12 @@ export default function AuthPage() {
               {mode === "signup" && (
                 <div>
                   <label className="label">Full Name</label>
-                  <input ref={nameRef} className="field" type="text" placeholder="Jane Smith" onKeyDown={handleKey} />
+                  <input ref={nameRef} className="field" type="text" placeholder="Rahul Sharma" onKeyDown={handleKey} />
                 </div>
               )}
               <div>
                 <label className="label">Email</label>
-                <input ref={emailRef} className="field" type="email" placeholder="you@university.ac.uk" onKeyDown={handleKey} />
+                <input ref={emailRef} className="field" type="email" placeholder="you@college.edu.in" onKeyDown={handleKey} />
               </div>
               <div>
                 <label className="label">Password</label>
@@ -164,8 +164,8 @@ export default function AuthPage() {
               ))}
             </div>
             <div>
-              <div style={{ display: "flex", gap: 2 }}>{[1, 2, 3, 4, 5].map(i => <Star key={i} size={10} fill="#C9A96E" color="#C9A96E" />)}</div>
-              <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>Loved by <strong style={{ color: "var(--forest)" }}>250,000+</strong> students</p>
+              <div style={{ display: "flex", gap: 2 }}>{[1, 2, 3, 4, 5].map(i => <Star key={i} size={10} fill="#2563EB" color="#2563EB" />)}</div>
+              <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>Loved by <strong style={{ color: "var(--forest)" }}>2,50,000+</strong> students across India</p>
             </div>
           </div>
 

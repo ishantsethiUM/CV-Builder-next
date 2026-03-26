@@ -66,7 +66,7 @@ export default function BuyCreditsModal() {
                 style={{
                   display: "flex", alignItems: "center", gap: 16, padding: "14px 16px",
                   border: isSelected ? "2px solid var(--gold)" : "2px solid var(--border)",
-                  borderRadius: "var(--radius)", background: isSelected ? "rgba(201,169,110,.06)" : "var(--white)",
+                  borderRadius: "var(--radius)", background: isSelected ? "rgba(37,99,235,.06)" : "var(--white)",
                   cursor: "pointer", textAlign: "left", transition: "all .15s", position: "relative",
                 }}
               >
@@ -86,7 +86,7 @@ export default function BuyCreditsModal() {
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 17, color: isSelected ? "var(--forest)" : "var(--ink)" }}>
-                    {plan.currency === "GBP" ? "£" : "$"}{plan.price}
+                    {plan.currency === "INR" ? "₹" : plan.currency === "GBP" ? "£" : "$"}{plan.price}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--muted)" }}>one-time</div>
                 </div>
@@ -123,11 +123,11 @@ export default function BuyCreditsModal() {
               onClick={handlePurchase}
               disabled={loading}
             >
-              {loading ? "Processing…" : `Buy ${CREDIT_PLANS.find(p => p.id === selected)?.name} — £${CREDIT_PLANS.find(p => p.id === selected)?.price}`}
+              {loading ? "Processing…" : `Buy ${CREDIT_PLANS.find(p => p.id === selected)?.name} — ₹${CREDIT_PLANS.find(p => p.id === selected)?.price}`}
             </button>
           )}
           <p style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", marginTop: 10 }}>
-            Secure payment · Credits never expire
+            Secure payment via UPI / Card · Credits credited instantly · Never expire
           </p>
         </div>
       </div>

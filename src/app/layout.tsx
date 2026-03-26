@@ -4,19 +4,19 @@ import { CreditsProvider } from "@/contexts/CreditsContext";
 import BuyCreditsModal from "@/components/BuyCreditsModal";
 
 export const metadata: Metadata = {
-  title: { default: "Folio — AI CV Builder", template: "%s" },
+  title: { default: "FitRezume — AI CV Builder", template: "%s" },
   description: "Build stunning, ATS-optimised CVs in minutes with AI-powered suggestions and professional templates.",
-  keywords: ["CV builder", "resume builder", "ATS", "AI resume", "job application"],
-  authors: [{ name: "Folio" }],
+  keywords: ["CV builder", "resume builder", "ATS", "AI resume", "job application", "India", "campus placement", "fresher CV"],
+  authors: [{ name: "FitRezume" }],
   openGraph: {
     type: "website",
-    siteName: "Folio",
-    title: "Folio — AI CV Builder",
+    siteName: "FitRezume",
+    title: "FitRezume — AI CV Builder",
     description: "Build stunning, ATS-optimised CVs in minutes.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Folio — AI CV Builder",
+    title: "FitRezume — AI CV Builder",
     description: "Build stunning, ATS-optimised CVs in minutes.",
   },
 };
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#1A3628",
+  themeColor: "#0F172A",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

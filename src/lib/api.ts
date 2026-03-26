@@ -11,9 +11,9 @@ const API  = `${BASE}/api`;
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 export const token = {
-  get: ()  => (typeof window !== "undefined" ? localStorage.getItem("folio_token") : null),
-  set: (t: string) => localStorage.setItem("folio_token", t),
-  del: ()  => localStorage.removeItem("folio_token"),
+  get: ()  => (typeof window !== "undefined" ? localStorage.getItem("FitRezume_token") : null),
+  set: (t: string) => localStorage.setItem("FitRezume_token", t),
+  del: ()  => localStorage.removeItem("FitRezume_token"),
 };
 
 // ── Base fetch wrapper ────────────────────────────────────────────────────────
@@ -304,9 +304,9 @@ export interface CreditPlan {
 }
 
 export const CREDIT_PLANS: CreditPlan[] = [
-  { id: "starter", name: "Starter Pack",  cvCredits: 3,  exportCredits: 5,  price: 4.99,  currency: "GBP" },
-  { id: "pro",     name: "Pro Pack",      cvCredits: 10, exportCredits: 20, price: 12.99, currency: "GBP", popular: true },
-  { id: "max",     name: "Max Pack",      cvCredits: 25, exportCredits: 50, price: 24.99, currency: "GBP" },
+  { id: "starter", name: "Starter Pack",  cvCredits: 3,  exportCredits: 5,  price: 199,  currency: "INR" },
+  { id: "pro",     name: "Pro Pack",      cvCredits: 10, exportCredits: 20, price: 499,  currency: "INR", popular: true },
+  { id: "max",     name: "Max Pack",      cvCredits: 25, exportCredits: 50, price: 999,  currency: "INR" },
 ];
 
 /** GET /api/credits — fetch current user credit balance */

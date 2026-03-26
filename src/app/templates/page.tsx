@@ -144,10 +144,10 @@ export default function TemplatesPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--cream)" }}>
-      <nav style={{ background: "var(--white)", borderBottom: "1px solid var(--border)", padding: "0 40px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, position: "sticky", top: 0, zIndex: 40, boxShadow: "var(--shadow-sm)" }}>
+      <nav style={{ background: "var(--white)", borderBottom: "1px solid var(--border)", padding: "0 clamp(16px,4vw,40px)", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, position: "sticky", top: 0, zIndex: 40, boxShadow: "var(--shadow-sm)" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <div style={{ width: 30, height: 30, background: "var(--forest)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6 }}><FileText size={14} color="var(--gold)" /></div>
-          <span style={{ fontFamily: F, fontSize: 21, fontWeight: 700, color: "var(--forest)" }}>Folio</span>
+          <span style={{ fontFamily: F, fontSize: 21, fontWeight: 700, color: "var(--forest)" }}>FitRezume</span>
         </Link>
         <div style={{ display: "flex", gap: 10 }}>
           <Link href="/dashboard" className="btn btn-ghost btn-sm">Dashboard</Link>
@@ -155,7 +155,7 @@ export default function TemplatesPage() {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 40px 80px" }}>
+      <div className="page-pad">
         <div style={{ textAlign: "center", marginBottom: 50 }}>
           <div className="eyebrow" style={{ justifyContent: "center" }}>8 Professional Templates</div>
           <h1 style={{ fontFamily: F, fontSize: "clamp(2.2rem,4vw,3.8rem)", fontWeight: 800, color: "var(--forest)", marginBottom: 14 }}>Choose Your Design</h1>
@@ -169,7 +169,7 @@ export default function TemplatesPage() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 24 }}>
+        <div className="grid-4col">
           {filtered.map(t => (
             <div key={t.id} className="card-flat" style={{ overflow: "hidden", cursor: "pointer", transition: "all .2s", transform: hov === t.id ? "translateY(-5px)" : "none", boxShadow: hov === t.id ? "var(--shadow-lg)" : "var(--shadow-sm)" }}
               onMouseEnter={() => setHov(t.id)} onMouseLeave={() => setHov(null)}>
@@ -178,8 +178,8 @@ export default function TemplatesPage() {
                 <span style={{ position: "absolute", top: 10, right: 10, fontFamily: M, fontSize: 9.5, padding: "3px 8px", borderRadius: 3, background: "rgba(45,122,79,.9)", color: "#fff", zIndex: 2 }}>ATS {t.ats}%</span>
                 <MiniPreview t={t} />
                 {hov === t.id && (
-                  <div style={{ position: "absolute", inset: 0, background: "rgba(26,54,40,.78)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, animation: "fadeIn .15s ease" }}>
-                    <button onClick={() => setPreview(t)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "9px 16px", background: "var(--gold)", color: "var(--charcoal)", border: "none", borderRadius: 5, fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: B }}>Preview</button>
+                  <div style={{ position: "absolute", inset: 0, background: "rgba(15,23,42,.82)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, animation: "fadeIn .15s ease" }}>
+                    <button onClick={() => setPreview(t)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "9px 16px", background: "var(--gold)", color: "#fff", border: "none", borderRadius: 5, fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: B }}>Preview</button>
                     <Link href="/builder" style={{ display: "flex", alignItems: "center", gap: 5, padding: "9px 16px", background: "var(--white)", color: "var(--forest)", borderRadius: 5, fontSize: 12.5, fontWeight: 700, textDecoration: "none", fontFamily: B }}>Use <ArrowRight size={12} /></Link>
                   </div>
                 )}
@@ -189,7 +189,7 @@ export default function TemplatesPage() {
                 <p style={{ fontFamily: B, fontSize: 12.5, color: "var(--muted)", marginBottom: 10, lineHeight: 1.5 }}>{t.desc}</p>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <div style={{ display: "flex", gap: 1 }}>{[1, 2, 3, 4, 5].map(s => <Star key={s} size={10} fill={s <= Math.floor(t.stars) ? "#C9A96E" : "transparent"} color="#C9A96E" />)}</div>
+                    <div style={{ display: "flex", gap: 1 }}>{[1, 2, 3, 4, 5].map(s => <Star key={s} size={10} fill={s <= Math.floor(t.stars) ? "#2563EB" : "transparent"} color="#2563EB" />)}</div>
                     <span style={{ fontFamily: M, fontSize: 9.5, color: "var(--muted)" }}>{t.stars}</span>
                   </div>
                   <span style={{ fontFamily: M, fontSize: 9.5, color: "var(--muted)" }}>{t.uses} uses</span>
@@ -204,7 +204,7 @@ export default function TemplatesPage() {
           <h2 style={{ fontFamily: F, fontSize: "clamp(1.8rem,3vw,2.8rem)", fontWeight: 700, color: "var(--forest)", marginBottom: 10 }}>All Templates Include</h2>
           <p style={{ fontFamily: B, fontSize: 15, color: "var(--muted)" }}>Every template comes with these features built-in.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
+        <div className="grid-3col">
           {[
             { icon: "📄", title: "One-click PDF Export", desc: "Download a pixel-perfect PDF in seconds." },
             { icon: "🤖", title: "ATS Optimised", desc: "Structured to pass automated screening systems." },
@@ -226,7 +226,7 @@ export default function TemplatesPage() {
 
       {/* Preview Modal */}
       {preview && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(26,54,40,.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 40, animation: "fadeIn .2s ease" }} onClick={() => setPreview(null)}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 40, animation: "fadeIn .2s ease" }} onClick={() => setPreview(null)}>
           <div style={{ background: "var(--white)", borderRadius: 10, overflow: "hidden", maxWidth: 660, width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--shadow-lg)" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 22px", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
               <div>
@@ -250,8 +250,8 @@ export default function TemplatesPage() {
               <p style={{ fontFamily: B, fontSize: 13.5, color: "var(--muted)", marginBottom: 12 }}>{preview.desc}</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {["ATS Optimised", "PDF Export", "Live Preview", "AI Assist"].map(f => (
-                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 4, background: "rgba(26,54,40,.07)", border: "1px solid rgba(26,54,40,.12)" }}>
-                    <Check size={10} color="#2d7a4f" />
+                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 4, background: "rgba(37,99,235,.07)", border: "1px solid rgba(37,99,235,.15)" }}>
+                    <Check size={10} color="#2563EB" />
                     <span style={{ fontFamily: B, fontSize: 12, color: "var(--forest)" }}>{f}</span>
                   </div>
                 ))}

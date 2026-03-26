@@ -15,16 +15,16 @@ import {
 
 const FF = "'Inter', system-ui, -apple-system, sans-serif";
 const C = {
-  forest: "#1A3628",
-  gold: "#C9A96E",
-  cream: "#FAFAF8",
-  ink: "#18181B",
-  muted: "#71717A",
+  forest: "#0F172A",
+  gold: "#2563EB",
+  cream: "#F8FAFF",
+  ink: "#0F172A",
+  muted: "#64748B",
   white: "#FFFFFF",
-  border: "#E4E4E7",
-  ember: "#D14A2A",
-  charcoal: "#27272A",
-  surface: "#F4F4F5",
+  border: "#E2E8F0",
+  ember: "#DC2626",
+  charcoal: "#1E293B",
+  surface: "#F8FAFF",
 };
 
 function AtsRing({ score, size = 40 }: { score: number; size?: number }) {
@@ -142,7 +142,7 @@ export default function Dashboard() {
           <div style={{ width: 30, height: 30, background: C.forest, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 7 }}>
             <FileText size={14} color={C.gold} />
           </div>
-          <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 20, fontWeight: 700, color: C.ink, letterSpacing: "-0.3px" }}>Folio</span>
+          <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 20, fontWeight: 700, color: C.ink, letterSpacing: "-0.3px" }}>FitRezume</span>
         </Link>
 
         {/* Nav */}

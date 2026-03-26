@@ -37,7 +37,7 @@ export default function PublicResumePage({ params }: { params: { slug: string } 
       </header>
       <div style={{ display:"flex",justifyContent:"center",padding:"36px 22px 56px" }}>
         <div>
-          <p style={{ textAlign:"center",fontFamily:"'JetBrains Mono'",fontSize:9.5,color:"var(--muted)",marginBottom:14 }}>folio.app/resume/{params.slug}</p>
+          <p style={{ textAlign:"center",fontFamily:"'JetBrains Mono'",fontSize:9.5,color:"var(--muted)",marginBottom:14 }}>FitRezume.app/resume/{params.slug}</p>
           {/* CV Preview */}
           <div style={{ width:700,maxWidth:"100%",background:"#fff",boxShadow:"0 20px 60px rgba(28,56,41,.14)",borderRadius:3,padding:"38px 46px",fontFamily:"Georgia,serif" }}>
             <div style={{ borderBottom:"2.5px solid #1C3829",paddingBottom:14,marginBottom:18 }}>
@@ -59,7 +59,7 @@ export default function PublicResumePage({ params }: { params: { slug: string } 
           {/* CTA */}
           <div style={{ marginTop:24,padding:"22px 26px",background:"#fff",borderRadius:3,border:"1px solid var(--border)",maxWidth:700,textAlign:"center" }}>
             <p style={{ fontFamily:"'Cormorant Garamond',serif",fontSize:21,fontWeight:700,color:"var(--forest)",marginBottom:7 }}>Build your own AI-powered CV</p>
-            <p style={{ fontSize:13,color:"var(--muted)",marginBottom:16 }}>Join 250,000+ students who've landed jobs at top companies using Folio.</p>
+            <p style={{ fontSize:13,color:"var(--muted)",marginBottom:16 }}>Join 250,000+ students who've landed jobs at top companies using FitRezume.</p>
             <Link href="/auth" style={{ display:"inline-flex",alignItems:"center",gap:7,padding:"10px 22px",borderRadius:3,background:"var(--forest)",color:"var(--cream)",textDecoration:"none",fontSize:13,fontWeight:700,cursor:"default" }}>
               Get Started Free <ExternalLink size={13}/>
             </Link>
