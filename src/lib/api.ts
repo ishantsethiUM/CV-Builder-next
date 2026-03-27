@@ -291,6 +291,7 @@ export async function jobMatch(cvText: string, jobDesc: string): Promise<JobMatc
 export interface UserCredits {
   cvCredits: number;
   exportCredits: number;
+  toolCredits: number;
 }
 
 export interface CreditPlan {
@@ -303,10 +304,21 @@ export interface CreditPlan {
   popular?: boolean;
 }
 
+export interface CreditPlan {
+  id: string;
+  name: string;
+  cvCredits: number;
+  exportCredits: number;
+  toolCredits: number;
+  price: number;
+  currency: string;
+  popular?: boolean;
+}
+
 export const CREDIT_PLANS: CreditPlan[] = [
-  { id: "starter", name: "Starter Pack",  cvCredits: 3,  exportCredits: 5,  price: 199,  currency: "INR" },
-  { id: "pro",     name: "Pro Pack",      cvCredits: 10, exportCredits: 20, price: 499,  currency: "INR", popular: true },
-  { id: "max",     name: "Max Pack",      cvCredits: 25, exportCredits: 50, price: 999,  currency: "INR" },
+  { id: "starter", name: "Starter Pack",  cvCredits: 3,  exportCredits: 5,  toolCredits: 3,  price: 199, currency: "INR" },
+  { id: "pro",     name: "Pro Pack",      cvCredits: 10, exportCredits: 20, toolCredits: 10, price: 499, currency: "INR", popular: true },
+  { id: "max",     name: "Max Pack",      cvCredits: 25, exportCredits: 50, toolCredits: 25, price: 999, currency: "INR" },
 ];
 
 /** GET /api/credits — fetch current user credit balance */
@@ -327,5 +339,13 @@ export async function trackExport(resumeId?: string | number): Promise<UserCredi
   return request<UserCredits>(`${API}/credits/track-export`, {
     method: "POST",
     body: JSON.stringify({ resumeId }),
+  });
+}
+
+/** POST /api/credits/track-tool — deduct one tool credit server-side */
+export async function trackToolUse(tool: "roast" | "interview" | "job-match"): Promise<UserCredits> {
+  return request<UserCredits>(`${API}/credits/track-tool`, {
+    method: "POST",
+    body: JSON.stringify({ tool }),
   });
 }

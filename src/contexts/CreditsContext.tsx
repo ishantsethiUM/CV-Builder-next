@@ -1,18 +1,24 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { getCredits, purchaseCredits, trackExport, CREDIT_PLANS, UserCredits } from "@/lib/api";
+import { getCredits, purchaseCredits, trackExport, trackToolUse, CREDIT_PLANS, UserCredits } from "@/lib/api";
 import { token } from "@/lib/api";
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 const CREDITS_KEY = "FitRezume_credits";
-const DEFAULT_CREDITS: UserCredits = { cvCredits: 3, exportCredits: 5 };
+const DEFAULT_CREDITS: UserCredits = { cvCredits: 3, exportCredits: 5, toolCredits: 3 };
 
 function readLocal(): UserCredits | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(CREDITS_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as UserCredits;
+    const parsed = JSON.parse(raw) as Partial<UserCredits>;
+    // Back-fill toolCredits for existing sessions that pre-date this field
+    return {
+      cvCredits: parsed.cvCredits ?? 3,
+      exportCredits: parsed.exportCredits ?? 5,
+      toolCredits: parsed.toolCredits ?? 3,
+    };
   } catch { return null; }
 }
 
@@ -30,6 +36,8 @@ interface CreditsContextType {
   refresh: () => Promise<void>;
   deductCvCredit: () => void;
   deductExportCredit: () => void;
+  deductToolCredit: () => void;
+  doTrackToolUse: (tool: "roast" | "interview" | "job-match") => Promise<void>;
   purchase: (planId: string) => Promise<void>;
   doTrackExport: (resumeId?: string | number) => Promise<void>;
   buyModalOpen: boolean;
@@ -53,26 +61,24 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
 
   // ── Load credits: localStorage first, then API ──────────────────────────────
   const refresh = useCallback(async () => {
-    // Step 1: Load from localStorage immediately (fast, no flicker)
     const local = readLocal();
     if (local) {
       setCredits(local);
     } else if (token.get()) {
-      // New user — initialize with free starter credits
       update(DEFAULT_CREDITS);
     }
 
-    // Step 2: Try API in background — only adopt if API returns non-zero credits
-    // (backend may return 0 for new users or may not implement credits at all)
     if (!token.get()) return;
     setLoading(true);
     try {
       const api = await getCredits();
-      // Trust API if it returned meaningful data
       if (api.cvCredits > 0 || api.exportCredits > 0) {
-        update(api);
+        update({
+          cvCredits: api.cvCredits,
+          exportCredits: api.exportCredits,
+          toolCredits: api.toolCredits ?? local?.toolCredits ?? 3,
+        });
       }
-      // If API returns {0,0} but local has credits → backend doesn't track, keep local
       setError("");
     } catch {
       // API unavailable → local credits are the source of truth
@@ -100,22 +106,33 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
       return next;
     });
 
-  // ── Purchase: try API, fall back to local credit addition ──────────────────
+  const deductToolCredit = () =>
+    setCredits(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, toolCredits: Math.max(0, prev.toolCredits - 1) };
+      writeLocal(next);
+      return next;
+    });
+
+  // ── Purchase ────────────────────────────────────────────────────────────────
   const purchase = async (planId: string) => {
     const plan = CREDIT_PLANS.find(p => p.id === planId);
     if (!plan) throw new Error("Invalid plan");
 
     try {
       const result = await purchaseCredits(planId);
-      update({ cvCredits: result.cvCredits, exportCredits: result.exportCredits });
+      update({
+        cvCredits: result.cvCredits,
+        exportCredits: result.exportCredits,
+        toolCredits: result.toolCredits ?? (credits?.toolCredits ?? 0) + plan.toolCredits,
+      });
     } catch {
-      // API unavailable (no payment backend yet) — add credits locally so the
-      // demo works end-to-end. In production, replace with real payment flow.
       setCredits(prev => {
         const base = prev ?? DEFAULT_CREDITS;
-        const next = {
+        const next: UserCredits = {
           cvCredits: base.cvCredits + plan.cvCredits,
           exportCredits: base.exportCredits + plan.exportCredits,
+          toolCredits: base.toolCredits + plan.toolCredits,
         };
         writeLocal(next);
         return next;
@@ -123,23 +140,43 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ── Track export: try API, already deducted locally ─────────────────────────
+  // ── Track export ─────────────────────────────────────────────────────────────
   const doTrackExport = async (resumeId?: string | number) => {
     try {
       const result = await trackExport(resumeId);
-      // Only adopt server result if it makes sense (non-negative)
       if (result.exportCredits >= 0) {
-        update({ cvCredits: result.cvCredits, exportCredits: result.exportCredits });
+        update({
+          cvCredits: result.cvCredits,
+          exportCredits: result.exportCredits,
+          toolCredits: result.toolCredits ?? credits?.toolCredits ?? 0,
+        });
       }
     } catch {
-      // Already deducted locally — nothing to do
+      // Already deducted locally
+    }
+  };
+
+  // ── Track tool use ───────────────────────────────────────────────────────────
+  const doTrackToolUse = async (tool: "roast" | "interview" | "job-match") => {
+    try {
+      const result = await trackToolUse(tool);
+      if (result.toolCredits >= 0) {
+        update({
+          cvCredits: result.cvCredits,
+          exportCredits: result.exportCredits,
+          toolCredits: result.toolCredits,
+        });
+      }
+    } catch {
+      // Already deducted locally
     }
   };
 
   return (
     <CreditsContext.Provider value={{
       credits, loading, error, refresh,
-      deductCvCredit, deductExportCredit,
+      deductCvCredit, deductExportCredit, deductToolCredit,
+      doTrackToolUse,
       purchase, doTrackExport,
       buyModalOpen,
       openBuyModal: () => setBuyModalOpen(true),

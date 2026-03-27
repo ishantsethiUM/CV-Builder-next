@@ -1266,6 +1266,25 @@ function BuilderInner() {
   const dragProjOverIdx = useRef(-1);
   const dragAchIdx = useRef(-1);
   const dragAchOverIdx = useRef(-1);
+  const [isMobile, setIsMobile] = useState(false);
+  const [zoom, setZoom] = useState(100);
+
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setShowPreview(false);
+        // Auto-fit A4 width (794px) to screen with some padding
+        setZoom(Math.max(30, Math.round((window.innerWidth - 32) / 794 * 100)));
+      } else {
+        setZoom(100);
+      }
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => { setAiOpen(null); }, [tab]);
 
@@ -1403,7 +1422,7 @@ function BuilderInner() {
           <input
             value={cv.personal.name || "Untitled"}
             onChange={e => upP("name", e.target.value)}
-            style={{ border: "none", background: "transparent", fontSize: 14, fontWeight: 600, color: "#fff", outline: "none", width: 160, minWidth: 80, fontFamily: THEME.fontFamily }}
+            style={{ border: "none", background: "transparent", fontSize: 14, fontWeight: 600, color: "#fff", outline: "none", width: isMobile ? 90 : 160, minWidth: 60, fontFamily: THEME.fontFamily }}
           />
         </div>
 
@@ -1426,18 +1445,22 @@ function BuilderInner() {
 
           <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.12)" }} />
 
-          {/* ATS */}
-          <button onClick={() => setShowATS(a => !a)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 4, background: showATS ? "rgba(37,99,235,.22)" : "rgba(255,255,255,.06)", border: `1px solid ${showATS ? THEME.gold : "rgba(255,255,255,.18)"}`, color: showATS ? THEME.gold : "#94A3B8", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-            <BarChart2 size={13} /> ATS
-          </button>
+          {/* ATS — hidden on mobile */}
+          {!isMobile && (
+            <button onClick={() => setShowATS(a => !a)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 4, background: showATS ? "rgba(37,99,235,.22)" : "rgba(255,255,255,.06)", border: `1px solid ${showATS ? THEME.gold : "rgba(255,255,255,.18)"}`, color: showATS ? THEME.gold : "#94A3B8", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+              <BarChart2 size={13} /> ATS
+            </button>
+          )}
 
-          {/* Preview toggle — icon only */}
-          <button onClick={() => setShowPreview(p => !p)} title={showPreview ? "Editor only" : "Split view"} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "5px 8px", borderRadius: 4, background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,0.18)", color: "#94A3B8", cursor: "pointer" }}>
-            {showPreview ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
+          {/* Preview toggle — hidden on mobile (bottom bar handles it) */}
+          {!isMobile && (
+            <button onClick={() => setShowPreview(p => !p)} title={showPreview ? "Editor only" : "Split view"} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "5px 8px", borderRadius: 4, background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,0.18)", color: "#94A3B8", cursor: "pointer" }}>
+              {showPreview ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          )}
 
-          {/* Credits badge */}
-          {credits !== null && (
+          {/* Credits badge — hidden on mobile */}
+          {credits !== null && !isMobile && (
             <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 4, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.1)", fontSize: 11, fontFamily: "'IBM Plex Mono', monospace", whiteSpace: "nowrap" }}>
               <span style={{ color: credits.cvCredits === 0 ? "#F87171" : credits.cvCredits <= 1 ? "#FCD34D" : "#6EE7B7" }}>CV:{credits.cvCredits}</span>
               <span style={{ color: "rgba(255,255,255,.25)" }}>|</span>
@@ -1446,16 +1469,16 @@ function BuilderInner() {
           )}
 
           {/* Save */}
-          <button onClick={handleSave} disabled={saveState === "saving"} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 14px", borderRadius: 4, background: saveState === "saved" ? THEME.success : saveState === "error" ? THEME.danger : THEME.primary, color: "#fff", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
-            {saveState === "saving" ? "Saving…" : saveState === "saved" ? <><Check size={13} />Saved</> : saveState === "error" ? "Error!" : <><Save size={13} />Save</>}
+          <button onClick={handleSave} disabled={saveState === "saving"} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 4, background: saveState === "saved" ? THEME.success : saveState === "error" ? THEME.danger : THEME.primary, color: "#fff", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
+            {saveState === "saving" ? "Saving…" : saveState === "saved" ? <><Check size={13} />{!isMobile && "Saved"}</> : saveState === "error" ? "Error!" : <><Save size={13} />{!isMobile && "Save"}</>}
           </button>
 
           {/* Export */}
           <button
             onClick={credits !== null && credits.exportCredits === 0 ? openBuyModal : handleDownload}
-            style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 14px", borderRadius: 4, background: credits !== null && credits.exportCredits === 0 ? "#374151" : "#fff", color: credits !== null && credits.exportCredits === 0 ? "#9CA3AF" : THEME.darkBg, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 4, background: credits !== null && credits.exportCredits === 0 ? "#374151" : "#fff", color: credits !== null && credits.exportCredits === 0 ? "#9CA3AF" : THEME.darkBg, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
             title={credits !== null && credits.exportCredits === 0 ? "No export credits — click to buy" : "Download CV"}>
-            <Download size={13} /> {credits !== null && credits.exportCredits === 0 ? "Buy Credits" : "Export PDF"}
+            <Download size={13} /> {isMobile ? "" : (credits !== null && credits.exportCredits === 0 ? "Buy Credits" : "Export PDF")}
           </button>
         </div>
       </header>
@@ -1463,7 +1486,7 @@ function BuilderInner() {
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
         {/* ── EDITOR PANEL ── */}
-        <div style={{ width: showPreview ? 500 : "100%", maxWidth: 800, margin: showPreview ? 0 : "0 auto", background: THEME.surface, borderRight: `1px solid ${THEME.border}`, display: "flex", flexDirection: "column", overflowY: "auto", boxShadow: showPreview ? "none" : "0 0 20px rgba(0,0,0,0.05)" }}>
+        <div style={{ width: isMobile ? "100%" : (showPreview ? 500 : "100%"), maxWidth: isMobile ? "100%" : 800, margin: (!isMobile && !showPreview) ? "0 auto" : 0, background: THEME.surface, borderRight: `1px solid ${THEME.border}`, display: isMobile && showPreview ? "none" : "flex", flexDirection: "column", overflowY: "auto", boxShadow: (!isMobile && !showPreview) ? "0 0 20px rgba(0,0,0,0.05)" : "none", paddingBottom: isMobile ? 52 : 0 }}>
           
           {/* Horizontal Tabs */}
           <div style={{ display: "flex", borderBottom: `1px solid ${THEME.border}`, padding: "0 24px", overflowX: "auto", flexShrink: 0, background: THEME.surface }}>
@@ -1480,7 +1503,7 @@ function BuilderInner() {
             {/* ── PERSONAL ── */}
             {tab === "Personal" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 20 }}>
                   <div><label style={labelStyle}>Full Name</label><input style={inputStyle} value={cv.personal.name} onChange={e => upP("name", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
                   <div><label style={labelStyle}>Email Address</label><input style={inputStyle} type="email" value={cv.personal.email} onChange={e => upP("email", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
                   <div><label style={labelStyle}>Phone Number</label><input style={inputStyle} value={cv.personal.phone} onChange={e => upP("phone", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
@@ -1528,7 +1551,7 @@ function BuilderInner() {
                     </div>
                     {!collapsed[exp.id] && (
                       <div style={{ padding: "20px" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, marginBottom: 20 }}>
                           {(["role", "company", "period", "location"] as const).map(f => (
                             <div key={f}><label style={labelStyle}>{f}</label><input style={inputStyle} value={exp[f] || ""} onChange={e => setCV(c => ({ ...c, experience: c.experience.map(ex => ex.id === exp.id ? { ...ex, [f]: e.target.value } : ex) }))} onFocus={onFocus} onBlur={onBlur} /></div>
                           ))}
@@ -1579,7 +1602,7 @@ function BuilderInner() {
                       </div>
                     </div>
                     {!collapsed[edu.id] && (
-                      <div style={{ padding: "20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                      <div style={{ padding: "20px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
                         {(["degree", "field", "school", "period", "gpa", "honors"] as const).map(f => (
                           <div key={f}><label style={labelStyle}>{f}</label><input style={inputStyle} value={edu[f] || ""} onChange={e => setCV(c => ({ ...c, education: c.education.map(ed => ed.id === edu.id ? { ...ed, [f]: e.target.value } : ed) }))} onFocus={onFocus} onBlur={onBlur} /></div>
                         ))}
@@ -1635,7 +1658,7 @@ function BuilderInner() {
                     </div>
                     {!collapsed[p.id] && (
                       <div style={{ padding: "20px" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, marginBottom: 16 }}>
                           {(["name", "tech"] as const).map(f => (
                             <div key={f}><label style={labelStyle}>{f}</label><input style={inputStyle} value={p[f]} onChange={e => setCV(c => ({ ...c, projects: c.projects.map(pr => pr.id === p.id ? { ...pr, [f]: e.target.value } : pr) }))} onFocus={onFocus} onBlur={onBlur} /></div>
                           ))}
@@ -1721,25 +1744,72 @@ function BuilderInner() {
 
         {/* ── LIVE PREVIEW ── */}
         {showPreview && (
-          <div style={{ flex: 1, background: "#E5E7EB", display: "flex", overflow: "hidden", position: "relative" }}>
-            
-            {/* Zoom / View controls mockup */}
-            <div style={{ position: "absolute", bottom: 24, right: 24, background: THEME.darkBg, padding: "8px 16px", borderRadius: "30px", display: "flex", gap: 16, boxShadow: "0 10px 25px rgba(0,0,0,0.15)", zIndex: 20 }}>
-              <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>100%</span>
+          <div style={{ flex: 1, width: isMobile ? "100%" : undefined, background: "#E5E7EB", display: "flex", overflow: "hidden", position: "relative", paddingBottom: isMobile ? 52 : 0 }}>
+
+            {/* ── Zoom controls (real) ── */}
+            <div style={{ position: "fixed", bottom: isMobile ? 60 : 24, right: 20, background: THEME.darkBg, padding: "6px 10px", borderRadius: "30px", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.22)", zIndex: 60 }}>
+              <button
+                onClick={() => setZoom(z => Math.max(30, z - 10))}
+                disabled={zoom <= 30}
+                style={{ background: "none", border: "none", cursor: zoom > 30 ? "pointer" : "default", color: zoom > 30 ? "#fff" : "#64748B", fontSize: 20, lineHeight: 1, padding: "0 3px", display: "flex", alignItems: "center", fontWeight: 300 }}>
+                −
+              </button>
+              <span style={{ color: "#fff", fontSize: 12, fontWeight: 600, minWidth: 38, textAlign: "center", fontFamily: "'IBM Plex Mono', monospace" }}>{zoom}%</span>
+              <button
+                onClick={() => setZoom(z => Math.min(150, z + 10))}
+                disabled={zoom >= 150}
+                style={{ background: "none", border: "none", cursor: zoom < 150 ? "pointer" : "default", color: zoom < 150 ? "#fff" : "#64748B", fontSize: 20, lineHeight: 1, padding: "0 3px", display: "flex", alignItems: "center", fontWeight: 300 }}>
+                +
+              </button>
+              <div style={{ width: 1, height: 16, background: "rgba(255,255,255,.18)" }} />
+              <button
+                onClick={() => setZoom(isMobile ? Math.max(30, Math.round((window.innerWidth - 32) / 794 * 100)) : 100)}
+                title="Reset zoom"
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", padding: "0 2px" }}>
+                ↺
+              </button>
             </div>
 
-            <div style={{ flex: 1, overflow: "auto", display: "flex", justifyContent: "center", padding: "40px" }}>
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <div ref={previewRef} style={{ width: "210mm", minHeight: "297mm", background: "#fff", boxShadow: "0 4px 24px rgba(0,0,0,0.18)" }}>
-                  <Preview cv={cv} template={template} setCV={setCV} />
+            <div style={{ flex: 1, overflow: "auto", display: "flex", justifyContent: "center", padding: isMobile ? "16px 0" : "40px" }}>
+              {/* Sizing wrapper: occupies the visual space of the scaled A4 page (794×1123 px at 96dpi) */}
+              <div style={{
+                width: `${Math.round(794 * zoom / 100)}px`,
+                minHeight: `${Math.round(1123 * zoom / 100)}px`,
+                position: "relative",
+                flexShrink: 0,
+              }}>
+                {/* Scale wrapper — transform lives here, NOT on previewRef, so download HTML is clean */}
+                <div style={{
+                  transformOrigin: "top left",
+                  transform: `scale(${zoom / 100})`,
+                  width: "210mm",
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                }}>
+                  <div ref={previewRef} style={{ width: "210mm", minHeight: "297mm", background: "#fff", boxShadow: "0 4px 24px rgba(0,0,0,0.18)" }}>
+                    <Preview cv={cv} template={template} setCV={setCV} />
+                  </div>
+                  {/* Page-break indicator lines */}
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none", backgroundImage: "repeating-linear-gradient(transparent 0, transparent calc(297mm - 2px), rgba(59,130,246,0.35) calc(297mm - 2px), rgba(59,130,246,0.35) calc(297mm))", backgroundSize: "100% 297mm", zIndex: 10 }} />
                 </div>
-                {/* Page-break indicator lines — repeats every 297mm, pointer-events: none so clicks pass through */}
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none", backgroundImage: "repeating-linear-gradient(transparent 0, transparent calc(297mm - 2px), rgba(59,130,246,0.35) calc(297mm - 2px), rgba(59,130,246,0.35) calc(297mm))", backgroundSize: "100% 297mm", zIndex: 10 }} />
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* ── MOBILE BOTTOM BAR ── */}
+      {isMobile && (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, background: THEME.darkBg, borderTop: "1px solid rgba(255,255,255,.12)", display: "flex", height: 52 }}>
+          <button onClick={() => setShowPreview(false)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: !showPreview ? "rgba(255,255,255,.1)" : "none", color: !showPreview ? "#fff" : "#64748B", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", borderRight: "1px solid rgba(255,255,255,.08)" }}>
+            <FileText size={15} /> Edit
+          </button>
+          <button onClick={() => setShowPreview(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: showPreview ? "rgba(255,255,255,.1)" : "none", color: showPreview ? "#fff" : "#64748B", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            <Eye size={15} /> Preview
+          </button>
+        </div>
+      )}
 
     </div>
   );

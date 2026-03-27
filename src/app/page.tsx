@@ -90,7 +90,6 @@ export default function Home() {
   const floatCardRef  = useRef<HTMLDivElement>(null);
   const fb1Ref        = useRef<HTMLDivElement>(null);
   const fb2Ref        = useRef<HTMLDivElement>(null);
-  const atsFillRef    = useRef<HTMLDivElement>(null);
   const atsNumRef     = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
@@ -136,13 +135,12 @@ export default function Home() {
           .fromTo(fb1Ref.current,      { autoAlpha: 0, y: -20 }, { autoAlpha: 1, y: 0, duration: 0.6 }, "-=.2")
           .fromTo(fb2Ref.current,      { autoAlpha: 0, x: -20 }, { autoAlpha: 1, x: 0, duration: 0.6 }, "-=.3");
 
-        /* ATS bar */
+        /* Placement counter */
         gsap.delayedCall(1.4, () => {
-          if (atsFillRef.current) atsFillRef.current.style.width = "87%";
           const obj = { v: 0 };
           gsap.to(obj, {
-            v: 87, duration: 1.6, ease: "power2.out",
-            onUpdate: () => { if (atsNumRef.current) atsNumRef.current.textContent = Math.round(obj.v) + "%"; },
+            v: 250, duration: 2, ease: "power2.out",
+            onUpdate: () => { if (atsNumRef.current) atsNumRef.current.textContent = String(Math.round(obj.v)); },
           });
         });
 
@@ -293,57 +291,65 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Resume document mockup */}
+          {/* Placement cards */}
           <div className="fr-hero-right">
-            <div className="fr-resume-mock" ref={floatCardRef}>
+            <div className="fr-placements-card" ref={floatCardRef}>
+
+              {/* Top badge */}
               <div className="fr-float-badge fr-fb1" ref={fb1Ref} style={{ fontFamily: B }}>
-               Interview booked!
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", display: "inline-block", flexShrink: 0 }} />
+                New placement today
               </div>
 
-              <div className="fr-mock-header">
-                <div className="fr-mock-avatar" style={{ fontFamily: F }}>AM</div>
-                <div className="fr-mock-info">
-                  <div className="fr-mock-name" style={{ fontFamily: B }}>Aarav Mehta</div>
-                  <div className="fr-mock-role" style={{ fontFamily: B }}>Software Engineer · Mumbai</div>
-                  <div className="fr-mock-meta" style={{ fontFamily: M }}>aarav@email.com · linkedin.com/in/aarav</div>
+              {/* Card title */}
+              <div className="fr-pc-header">
+                <span style={{ fontFamily: M, fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--muted)", fontWeight: 600 }}>Recent placements</span>
+                <span style={{ fontFamily: M, fontSize: 10, color: "var(--accent)", fontWeight: 700 }}>
+                  <span ref={atsNumRef}>0</span>K+ placed
+                </span>
+              </div>
+
+              {/* Student rows */}
+              {[
+                { img: "47", name: "Arjun Sharma",  college: "IIT Delhi",        role: "SDE-2",            company: "Microsoft",  color: "#0078D4" },
+                { img: "32", name: "Priya Patel",   college: "BITS Pilani",      role: "UX Designer",      company: "Flipkart",   color: "#F1A629" },
+                { img: "12", name: "Rohan Verma",   college: "NIT Trichy",       role: "Product Manager",  company: "Razorpay",   color: "#2563EB" },
+                { img: "22", name: "Sneha Kapoor",  college: "VIT Vellore",      role: "Data Analyst",     company: "Infosys",    color: "#0E4D92" },
+              ].map((s, i) => (
+                <div key={i} className="fr-pc-row" style={{ fontFamily: B }}>
+                  <img src={`https://i.pravatar.cc/44?img=${s.img}`} alt={s.name} className="fr-pc-avatar" />
+                  <div className="fr-pc-info">
+                    <p className="fr-pc-name">{s.name}</p>
+                    <p className="fr-pc-college">{s.college}</p>
+                  </div>
+                  <div className="fr-pc-badge" style={{ color: s.color, background: s.color + "14", border: `1px solid ${s.color}28` }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={s.color} strokeWidth="2.8"><polyline points="20 6 9 17 4 12"/></svg>
+                    {s.company}
+                  </div>
                 </div>
-                <div className="fr-mock-ats-pill" style={{ fontFamily: M }}>
-                  <span>ATS</span>
-                  <strong ref={atsNumRef}>0%</strong>
+              ))}
+
+              {/* Footer */}
+              <div className="fr-pc-footer">
+                <div style={{ display: "flex" }}>
+                  {["47","12","32","22","8","15"].map((n,i) => (
+                    <img key={i} src={`https://i.pravatar.cc/28?img=${n}`} alt=""
+                      style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid #fff", marginLeft: i ? -7 : 0, objectFit: "cover" }} />
+                  ))}
                 </div>
+                <p style={{ fontFamily: B, fontSize: 12, color: "var(--muted)" }}>
+                  and <strong style={{ color: "var(--ink)" }}>2,50,000+</strong> more students placed
+                </p>
               </div>
 
-              <div className="fr-ats-bar">
-                <div className="fr-ats-fill" ref={atsFillRef} style={{ width:"0%" }} />
-              </div>
-
-              <div className="fr-mock-section">
-                <div className="fr-mock-section-label" style={{ fontFamily: M }}>Experience</div>
-                <div className="fr-mock-line fr-mock-line-full" />
-                <div className="fr-mock-line fr-mock-line-80" />
-                <div className="fr-mock-line fr-mock-line-65" />
-              </div>
-
-              <div className="fr-mock-section">
-                <div className="fr-mock-section-label" style={{ fontFamily: M }}>Education</div>
-                <div className="fr-mock-line fr-mock-line-full" />
-                <div className="fr-mock-line fr-mock-line-70" />
-              </div>
-
-              <div className="fr-mock-skills">
-                {["Python","React","Node.js","AWS","Agile"].map((s,i) => (
-                  <span key={s} className={`fr-mock-skill${i===1?" fr-mock-skill-gold":""}`} style={{ fontFamily: M }}>{s}</span>
-                ))}
-              </div>
-
-              <div className="fr-mock-ai-bar">
-                <span className="fr-mock-ai-text" style={{ fontFamily: B }}>AI optimising your bullets...</span>
-                <div className="fr-mock-ai-dots"><span /><span /><span /></div>
-              </div>
             </div>
 
+            {/* Bottom badge */}
             <div className="fr-float-badge fr-fb2" ref={fb2Ref} style={{ fontFamily: B }}>
-               AI optimised
+              {[1,2,3,4,5].map(i => (
+                <svg key={i} width="10" height="10" viewBox="0 0 24 24" fill="#FBBF24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              ))}
+              4.9 rating · 12K+ reviews
             </div>
           </div>
         </div>
@@ -416,69 +422,92 @@ export default function Home() {
                   <span className="fr-tpl-tag" style={{ background: t.tagColor, fontFamily: M }}>{t.tag}</span>
 
                   {t.id === "classic" && (
-                    <div className="fr-tpl-classic">
-                      <div className="fr-tpl-center-header">
-                        <div className="fr-tpl-name-bar" />
-                        <div className="fr-tpl-role-bar" />
-                        <div className="fr-tpl-contact-bar" />
+                    <div className="fr-rv fr-rv-classic">
+                      <div style={{ textAlign:"center", marginBottom:8 }}>
+                        <div className="fr-rv-name">AARAV MEHTA</div>
+                        <div className="fr-rv-role">Software Engineer · Mumbai</div>
+                        <div className="fr-rv-contact">aarav@email.com · github.com/aarav · +91 98765 43210</div>
                       </div>
-                      <div className="fr-tpl-hdivider" />
-                      <div className="fr-tpl-section">
-                        <div className="fr-tpl-slabel" style={{ background:"#166534" }} />
-                        <div className="fr-tpl-line fr-tpl-l100" /><div className="fr-tpl-line fr-tpl-l80" /><div className="fr-tpl-line fr-tpl-l65" />
+                      <div className="fr-rv-divider" style={{ background:"#1e293b" }} />
+                      <div className="fr-rv-sec">
+                        <div className="fr-rv-sec-title" style={{ color:"#166534" }}>EXPERIENCE</div>
+                        <div className="fr-rv-job-row"><span className="fr-rv-job">SDE-2 · Microsoft India</span><span className="fr-rv-dates">2023–Present</span></div>
+                        <div className="fr-rv-bullet">• Reduced API latency by 43% across 4 microservices, serving 2M+ users</div>
+                        <div className="fr-rv-bullet">• Led a squad of 6, shipped 14 product features in 2 quarters</div>
+                        <div className="fr-rv-job-row" style={{ marginTop:5 }}><span className="fr-rv-job">SDE-1 · Razorpay</span><span className="fr-rv-dates">2021–2023</span></div>
+                        <div className="fr-rv-bullet">• Built payment retry engine, recovering ₹4.2 Cr in failed transactions</div>
                       </div>
-                      <div className="fr-tpl-section">
-                        <div className="fr-tpl-slabel" style={{ background:"#166534" }} />
-                        <div className="fr-tpl-line fr-tpl-l100" /><div className="fr-tpl-line fr-tpl-l70" />
+                      <div className="fr-rv-sec">
+                        <div className="fr-rv-sec-title" style={{ color:"#166534" }}>EDUCATION</div>
+                        <div className="fr-rv-job-row"><span className="fr-rv-job">B.Tech CSE · IIT Delhi</span><span className="fr-rv-dates">2017–2021</span></div>
+                        <div className="fr-rv-sub">CGPA 9.1 / 10 · Dean's List · ACM ICPC Regionalist</div>
                       </div>
-                      <div className="fr-tpl-chips">
-                        <div className="fr-tpl-chip" /><div className="fr-tpl-chip" /><div className="fr-tpl-chip" />
+                      <div className="fr-rv-skills-row">
+                        {["React","Node.js","Python","AWS","PostgreSQL","Docker"].map(s => (
+                          <span key={s} className="fr-rv-chip fr-rv-chip-dark">{s}</span>
+                        ))}
                       </div>
                     </div>
                   )}
 
                   {t.id === "modern" && (
-                    <div className="fr-tpl-modern">
-                      <div className="fr-tpl-sidebar">
-                        <div className="fr-tpl-sb-avatar" />
-                        <div className="fr-tpl-sb-line fr-tpl-sb-l80" />
-                        <div className="fr-tpl-sb-line fr-tpl-sb-l60" />
-                        <div className="fr-tpl-sb-divider" />
-                        <div className="fr-tpl-sb-label" />
-                        <div className="fr-tpl-sb-line fr-tpl-sb-l100" /><div className="fr-tpl-sb-line fr-tpl-sb-l80" />
-                        <div className="fr-tpl-sb-divider" />
-                        <div className="fr-tpl-sb-label" />
-                        <div className="fr-tpl-chip fr-tpl-chip-sb" /><div className="fr-tpl-chip fr-tpl-chip-sb" />
+                    <div className="fr-rv fr-rv-modern">
+                      <div className="fr-rv-sidebar">
+                        <div className="fr-rv-sb-avatar">PP</div>
+                        <div className="fr-rv-sb-name">PRIYA PATEL</div>
+                        <div className="fr-rv-sb-role">UX Designer</div>
+                        <div className="fr-rv-sb-divider" />
+                        <div className="fr-rv-sb-label">CONTACT</div>
+                        <div className="fr-rv-sb-line">priya@email.com</div>
+                        <div className="fr-rv-sb-line">+91 98100 11223</div>
+                        <div className="fr-rv-sb-line">linkedin/priyapatel</div>
+                        <div className="fr-rv-sb-divider" />
+                        <div className="fr-rv-sb-label">SKILLS</div>
+                        {["Figma","Prototyping","User Research","Wireframing","Design Systems"].map(s => (
+                          <div key={s} className="fr-rv-sb-skill">{s}</div>
+                        ))}
                       </div>
-                      <div className="fr-tpl-main-col">
-                        <div className="fr-tpl-section">
-                          <div className="fr-tpl-slabel" style={{ background:"#1d4ed8" }} />
-                          <div className="fr-tpl-line fr-tpl-l100" /><div className="fr-tpl-line fr-tpl-l85" /><div className="fr-tpl-line fr-tpl-l70" />
+                      <div className="fr-rv-main">
+                        <div className="fr-rv-sec">
+                          <div className="fr-rv-sec-title" style={{ color:"#1d4ed8" }}>EXPERIENCE</div>
+                          <div className="fr-rv-job-row"><span className="fr-rv-job">UI Lead · Flipkart</span><span className="fr-rv-dates">2022–Now</span></div>
+                          <div className="fr-rv-bullet">• Redesigned checkout, boosted conversions by 28%</div>
+                          <div className="fr-rv-bullet">• Led design system adopted by 40+ engineers</div>
+                          <div className="fr-rv-job-row" style={{ marginTop:4 }}><span className="fr-rv-job">Designer · Swiggy</span><span className="fr-rv-dates">2020–22</span></div>
+                          <div className="fr-rv-bullet">• Shipped 6 app features, 4.7★ app store rating</div>
                         </div>
-                        <div className="fr-tpl-section">
-                          <div className="fr-tpl-slabel" style={{ background:"#1d4ed8" }} />
-                          <div className="fr-tpl-line fr-tpl-l100" /><div className="fr-tpl-line fr-tpl-l65" />
+                        <div className="fr-rv-sec">
+                          <div className="fr-rv-sec-title" style={{ color:"#1d4ed8" }}>EDUCATION</div>
+                          <div className="fr-rv-job-row"><span className="fr-rv-job">B.Des · NID Ahmedabad</span><span className="fr-rv-dates">2016–20</span></div>
+                          <div className="fr-rv-sub">Interaction Design · Gold Medal</div>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {t.id === "minimal" && (
-                    <div className="fr-tpl-minimal">
-                      <div className="fr-tpl-min-name" />
-                      <div className="fr-tpl-min-accent" />
-                      <div className="fr-tpl-min-role" />
-                      <div className="fr-tpl-min-divider" />
-                      <div className="fr-tpl-section">
-                        <div className="fr-tpl-slabel" style={{ background:"#7c3aed" }} />
-                        <div className="fr-tpl-line fr-tpl-l100" /><div className="fr-tpl-line fr-tpl-l85" /><div className="fr-tpl-line fr-tpl-l70" />
+                    <div className="fr-rv fr-rv-minimal">
+                      <div className="fr-rv-min-name">ROHAN VERMA</div>
+                      <div className="fr-rv-min-accent" />
+                      <div className="fr-rv-min-role">Product Manager</div>
+                      <div className="fr-rv-min-contact">rohan@email.com · Razorpay, Bengaluru · linkedin/rohanverma</div>
+                      <div className="fr-rv-divider" style={{ background:"#e2e8f0", margin:"8px 0" }} />
+                      <div className="fr-rv-sec">
+                        <div className="fr-rv-sec-title" style={{ color:"#7c3aed" }}>EXPERIENCE</div>
+                        <div className="fr-rv-job-row"><span className="fr-rv-job">Product Manager · Razorpay</span><span className="fr-rv-dates">2021–Present</span></div>
+                        <div className="fr-rv-bullet">• Launched 3 products contributing $2M ARR</div>
+                        <div className="fr-rv-bullet">• Grew active merchants from 50K → 200K in 18 months</div>
+                        <div className="fr-rv-job-row" style={{ marginTop:4 }}><span className="fr-rv-job">Associate PM · Meesho</span><span className="fr-rv-dates">2019–21</span></div>
+                        <div className="fr-rv-bullet">• Reduced onboarding drop-off by 35% via A/B tests</div>
                       </div>
-                      <div className="fr-tpl-section">
-                        <div className="fr-tpl-slabel" style={{ background:"#7c3aed" }} />
-                        <div className="fr-tpl-line fr-tpl-l100" /><div className="fr-tpl-line fr-tpl-l55" />
+                      <div className="fr-rv-sec">
+                        <div className="fr-rv-sec-title" style={{ color:"#7c3aed" }}>EDUCATION</div>
+                        <div className="fr-rv-job-row"><span className="fr-rv-job">MBA · IIM Bangalore</span><span className="fr-rv-dates">2017–19</span></div>
                       </div>
-                      <div className="fr-tpl-chips">
-                        <div className="fr-tpl-chip" /><div className="fr-tpl-chip" /><div className="fr-tpl-chip" /><div className="fr-tpl-chip" />
+                      <div className="fr-rv-skills-row" style={{ marginTop:4 }}>
+                        {["Product Strategy","Roadmapping","SQL","Figma","A/B Testing"].map(s => (
+                          <span key={s} className="fr-rv-chip fr-rv-chip-purple">{s}</span>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -822,67 +851,55 @@ body::before {
 .fr-social-text { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
 .fr-social-text strong { color: var(--ink); }
 
-/* Resume Mock */
+/* ── Placement Card ── */
 .fr-hero-right { position: relative; display: flex; justify-content: center; align-items: center; }
-.fr-resume-mock {
-  background: var(--white); border-radius: 16px; padding: 24px;
+
+.fr-placements-card {
+  background: var(--white); border-radius: 20px; padding: 20px 22px 16px;
   box-shadow: 0 40px 100px rgba(17,24,39,.13), 0 0 0 1px var(--border);
-  width: 340px; position: relative;
+  width: 348px; position: relative;
 }
-.fr-mock-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; padding-bottom: 16px; border-bottom: 1.5px solid var(--border); }
-.fr-mock-avatar {
-  width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 700; color: #fff;
+
+.fr-pc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
 }
-.fr-mock-info  { flex: 1; min-width: 0; }
-.fr-mock-name  { font-weight: 700; font-size: 14px; color: var(--ink); }
-.fr-mock-role  { font-size: 11.5px; color: var(--primary); font-weight: 600; margin-top: 2px; }
-.fr-mock-meta  { font-size: 9.5px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fr-mock-ats-pill {
-  flex-shrink: 0; background: var(--primary); color: #fff;
-  border-radius: 10px; padding: 5px 9px; text-align: center; line-height: 1.2;
-  font-size: 9px; text-transform: uppercase; letter-spacing: .04em;
+
+.fr-pc-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
 }
-.fr-mock-ats-pill strong { display: block; font-size: 18px; font-weight: 800; line-height: 1; margin-top: 2px; }
-.fr-ats-bar  { height: 6px; background: var(--border); border-radius: 100px; overflow: hidden; margin-bottom: 16px; }
-.fr-ats-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 1.6s ease; }
-.fr-mock-section { margin-bottom: 14px; }
-.fr-mock-section-label { font-size: 9px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px; }
-.fr-mock-line {
-  height: 7px; border-radius: 100px; margin-bottom: 6px;
-  background: linear-gradient(90deg, var(--border) 25%, rgba(17,24,39,.05) 50%, var(--border) 75%);
-  background-size: 200% 100%; animation: fr-shimmer 2.2s ease-in-out infinite;
+.fr-pc-row:last-of-type { border-bottom: none; }
+
+.fr-pc-avatar {
+  width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+  border: 2px solid var(--border);
 }
-.fr-mock-line-full { width: 100%; }
-.fr-mock-line-80   { width: 80%; animation-delay: .3s; }
-.fr-mock-line-70   { width: 70%; animation-delay: .15s; }
-.fr-mock-line-65   { width: 65%; animation-delay: .5s; }
-@keyframes fr-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-.fr-mock-skills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.fr-mock-skill { padding: 4px 10px; border-radius: 100px; font-size: 10px; font-weight: 600; background: rgba(17,24,39,.07); color: var(--ink); }
-.fr-mock-skill-gold { background: var(--accent-subtle); color: var(--accent-dark); }
-.fr-mock-ai-bar {
-  display: flex; align-items: center; gap: 8px;
-  background: rgba(22,101,52,.06); border: 1px solid rgba(22,101,52,.18);
-  border-radius: 9px; padding: 9px 12px;
+.fr-pc-info { flex: 1; min-width: 0; }
+.fr-pc-name {
+  font-size: 13.5px; font-weight: 600; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.fr-mock-ai-icon { color: var(--primary); font-size: 12px; flex-shrink: 0; }
-.fr-mock-ai-text { font-size: 11px; color: var(--primary); font-weight: 500; flex: 1; }
-.fr-mock-ai-dots { display: flex; gap: 3px; }
-.fr-mock-ai-dots span { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); animation: fr-dot 1.2s ease-in-out infinite; }
-.fr-mock-ai-dots span:nth-child(2) { animation-delay: .2s; }
-.fr-mock-ai-dots span:nth-child(3) { animation-delay: .4s; }
-@keyframes fr-dot { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-4px);opacity:1} }
+.fr-pc-college { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.fr-pc-badge {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 100px;
+}
+
+.fr-pc-footer {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+
+/* Float badges */
 .fr-float-badge {
   position: absolute; background: var(--primary); color: #FFFFFF;
   font-size: 11.5px; font-weight: 600; padding: 10px 14px; border-radius: 12px;
   box-shadow: 0 12px 32px rgba(15,23,42,.22); white-space: nowrap;
   display: flex; align-items: center; gap: 7px;
 }
-.fr-fb1 { top: -18px; right: -28px; }
-.fr-fb2 { bottom: 30px; left: -36px; }
+.fr-fb1 { top: -18px; right: -20px; }
+.fr-fb2 { bottom: 24px; left: -32px; }
 
 /* ── MARQUEE ── */
 .fr-marquee-wrap {
@@ -954,50 +971,63 @@ body::before {
 
 /* Template preview area */
 .fr-tpl-preview {
-  height: 230px; overflow: hidden; position: relative;
-  background: #f8fafc; border-bottom: 1.5px solid var(--border);
-  padding: 22px 20px 16px;
+  height: 242px; overflow: hidden; position: relative;
+  background: #ffffff; border-bottom: 1.5px solid var(--border);
+  padding: 0;
 }
 .fr-tpl-tag {
-  position: absolute; top: 12px; right: 12px;
-  color: #fff; font-size: 9.5px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; padding: 3px 9px; border-radius: 100px;
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 100px;
 }
 
-/* Shared lines & chips */
-.fr-tpl-line { height: 5px; border-radius: 100px; background: #e2e8f0; margin-bottom: 5px; }
-.fr-tpl-l100 { width:100%; } .fr-tpl-l85 { width:85%; } .fr-tpl-l80 { width:80%; }
-.fr-tpl-l70  { width:70%;  } .fr-tpl-l65 { width:65%; } .fr-tpl-l55 { width:55%; }
-.fr-tpl-section { margin-bottom: 11px; }
-.fr-tpl-slabel  { height: 5px; width: 28%; border-radius: 2px; margin-bottom: 7px; opacity:.8; }
-.fr-tpl-chips   { display:flex; gap:5px; flex-wrap:wrap; margin-top:4px; }
-.fr-tpl-chip    { height:13px; width:36px; border-radius:100px; background:#e2e8f0; }
+/* ── Real CV preview styles ── */
+.fr-rv { font-family: 'Inter', sans-serif; padding: 16px 16px 10px; height: 100%; }
 
-/* Classic template */
-.fr-tpl-classic { }
-.fr-tpl-center-header { text-align:center; margin-bottom:10px; }
-.fr-tpl-name-bar    { height:10px; width:50%; background:#1e293b; border-radius:3px; margin:0 auto 6px; }
-.fr-tpl-role-bar    { height:6px;  width:36%; background:#94a3b8; border-radius:3px; margin:0 auto 5px; }
-.fr-tpl-contact-bar { height:4px;  width:58%; background:#cbd5e1; border-radius:3px; margin:0 auto; }
-.fr-tpl-hdivider    { height:1.5px; background:#1e293b; margin:10px 0 12px; opacity:.15; }
+/* Classic */
+.fr-rv-classic { background: #fff; }
+.fr-rv-name    { font-size: 10.5px; font-weight: 800; color: #0f172a; letter-spacing: .06em; text-transform: uppercase; }
+.fr-rv-role    { font-size: 7.5px; color: #475569; margin-top: 2px; font-weight: 500; }
+.fr-rv-contact { font-size: 6.5px; color: #94a3b8; margin-top: 2px; }
+.fr-rv-divider { height: 1.5px; margin: 7px 0 8px; opacity: .15; }
+.fr-rv-sec     { margin-bottom: 8px; }
+.fr-rv-sec-title { font-size: 7px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 4px; }
+.fr-rv-job-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.fr-rv-job     { font-size: 7.5px; font-weight: 700; color: #0f172a; }
+.fr-rv-dates   { font-size: 6.5px; color: #94a3b8; white-space: nowrap; }
+.fr-rv-bullet  { font-size: 6.5px; color: #475569; line-height: 1.5; padding-left: 4px; }
+.fr-rv-sub     { font-size: 6.5px; color: #64748b; margin-top: 1px; }
+.fr-rv-skills-row { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+.fr-rv-chip    { font-size: 6px; font-weight: 600; padding: 2px 6px; border-radius: 100px; }
+.fr-rv-chip-dark   { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+.fr-rv-chip-purple { background: #f5f3ff; color: #6d28d9; border: 1px solid #ede9fe; }
 
-/* Modern template (sidebar) */
-.fr-tpl-modern    { display:flex; height:100%; margin:-22px -20px -16px; }
-.fr-tpl-sidebar   { width:36%; background:#1d4ed8; padding:18px 12px; display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
-.fr-tpl-sb-avatar { width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.3); margin-bottom:8px; }
-.fr-tpl-sb-line   { height:4px; border-radius:100px; background:rgba(255,255,255,.35); }
-.fr-tpl-sb-l100 { width:100%; } .fr-tpl-sb-l80 { width:80%; } .fr-tpl-sb-l60 { width:60%; }
-.fr-tpl-sb-divider { height:1px; background:rgba(255,255,255,.18); margin:5px 0; }
-.fr-tpl-sb-label   { height:4px; width:55%; border-radius:2px; background:rgba(255,255,255,.55); }
-.fr-tpl-chip-sb    { height:11px; width:44px; border-radius:100px; background:rgba(255,255,255,.2); }
-.fr-tpl-main-col   { flex:1; background:#fff; padding:18px 14px; }
+/* Modern (sidebar) */
+.fr-rv-modern  { display: flex; padding: 0; height: 100%; }
+.fr-rv-sidebar {
+  width: 38%; background: #1d4ed8; padding: 14px 10px;
+  display: flex; flex-direction: column; gap: 3px; flex-shrink: 0;
+}
+.fr-rv-sb-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(255,255,255,.25); display: flex; align-items: center;
+  justify-content: center; font-size: 8px; font-weight: 700; color: #fff;
+  margin-bottom: 6px; flex-shrink: 0;
+}
+.fr-rv-sb-name  { font-size: 7.5px; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: .05em; }
+.fr-rv-sb-role  { font-size: 6.5px; color: rgba(255,255,255,.7); margin-bottom: 5px; }
+.fr-rv-sb-divider { height: 1px; background: rgba(255,255,255,.15); margin: 4px 0; }
+.fr-rv-sb-label { font-size: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.5); margin-bottom: 2px; }
+.fr-rv-sb-line  { font-size: 6.5px; color: rgba(255,255,255,.75); }
+.fr-rv-sb-skill { font-size: 6.5px; color: rgba(255,255,255,.8); background: rgba(255,255,255,.12); padding: 2px 6px; border-radius: 3px; margin-bottom: 2px; width: fit-content; }
+.fr-rv-main     { flex: 1; background: #fff; padding: 14px 12px; overflow: hidden; }
 
-/* Minimal template */
-.fr-tpl-minimal { }
-.fr-tpl-min-name   { height:11px; width:48%; background:#0f172a; border-radius:3px; margin-bottom:6px; }
-.fr-tpl-min-accent { height:3px; width:38px; background:#7c3aed; border-radius:100px; margin-bottom:7px; }
-.fr-tpl-min-role   { height:5px; width:34%; background:#94a3b8; border-radius:3px; margin-bottom:14px; }
-.fr-tpl-min-divider{ height:1px; background:#e2e8f0; margin-bottom:12px; }
+/* Minimal */
+.fr-rv-minimal    { background: #fff; }
+.fr-rv-min-name   { font-size: 12px; font-weight: 800; color: #0f172a; letter-spacing: -.01em; }
+.fr-rv-min-accent { width: 28px; height: 2.5px; background: #7c3aed; border-radius: 100px; margin: 4px 0; }
+.fr-rv-min-role   { font-size: 7.5px; font-weight: 600; color: #475569; margin-bottom: 3px; }
+.fr-rv-min-contact { font-size: 6px; color: #94a3b8; }
 
 /* ── BANNER ── */
 .fr-banner {

@@ -199,7 +199,7 @@ export default function Dashboard() {
             {[
               { n: loading ? "—" : String(cvs.length), label: "CVs created", sub: "total" },
               { n: loading ? "—" : `${avgATS}`, label: "Avg ATS score", sub: "/ 100" },
-              { n: credits ? String(credits.exportCredits) : "—", label: "Export credits", sub: "remaining" },
+              { n: credits ? String(credits.toolCredits) : "—", label: "Tool credits", sub: "remaining" },
               { n: loading ? "—" : String(cvs.reduce((a, c) => a + (c.views || 0), 0)), label: "Profile views", sub: "total" },
             ].map((s) => (
               <div key={s.label} style={{ padding: "22px 24px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
@@ -449,6 +449,7 @@ export default function Dashboard() {
                   {[
                     { label: "CV credits", val: credits.cvCredits, low: lowCVCredits, empty: noCVCredits },
                     { label: "Export credits", val: credits.exportCredits, low: lowExportCredits, empty: credits.exportCredits === 0 },
+                    { label: "Tool credits", val: credits.toolCredits, low: credits.toolCredits === 1, empty: credits.toolCredits === 0 },
                   ].map(u => (
                     <div key={u.label} style={{ marginBottom: 14 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>

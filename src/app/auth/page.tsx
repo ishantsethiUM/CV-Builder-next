@@ -45,23 +45,16 @@ export default function AuthPage() {
   return (
     <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--cream)", overflowX: "hidden" }}>
 
-      {/* ── NAV (matches landing page) */}
+      {/* ── NAV */}
       <nav style={{ borderBottom: "1px solid var(--border)", background: "var(--cream)" }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none" }}>
-            <div style={{ width: 34, height: 34, background: "var(--forest)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3 }}>
+            <div style={{ width: 34, height: 34, background: "var(--forest)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 7 }}>
               <FileText size={16} color="var(--gold)" />
             </div>
             <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, color: "var(--forest)" }}>FitRezume</span>
           </Link>
-          <div style={{ display: "flex", gap: 2 }}>
-            {([["Templates", "/templates"], ["Tools", "/tools/roast"]] as const).map(([l, h]) => (
-              <Link key={l} href={h} style={{ padding: "7px 13px", fontSize: 14, fontWeight: 500, color: "var(--muted)", textDecoration: "none", borderRadius: 3, transition: "color .15s" }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "var(--forest)"}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "var(--muted)"}>{l}</Link>
-            ))}
-          </div>
-          <Link href="/" style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", textDecoration: "none", transition: "color .15s" }}
+          <Link href="/" style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", textDecoration: "none" }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "var(--forest)"}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "var(--muted)"}>
             ← Back to home
