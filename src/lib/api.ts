@@ -194,7 +194,8 @@ export async function aiImprove(input: string): Promise<string[]> {
 /** POST /api/ai/ats — ATS score analysis */
 export async function aiATS(cvText: string): Promise<{
   score: number;
-  breakdown: Record<string, number>;
+  keywords_found: string[];
+  missing_keywords: string[];
   suggestions: string[];
   strongPoints: string[];
 }> {
@@ -284,6 +285,32 @@ export async function jobMatch(cvText: string, jobDesc: string): Promise<JobMatc
   });
 }
 
+export interface ToolHistoryEntry {
+  id: string;
+  tool: "roast" | "interview" | "job-match";
+  input: Record<string, unknown>;
+  result: Record<string, unknown>;
+  createdAt: string;
+}
+
+/** GET /api/tools/history */
+export async function getToolHistory(): Promise<ToolHistoryEntry[]> {
+  return request<ToolHistoryEntry[]>(`${API}/tools/history`);
+}
+
+/** Extract text from a CV file via the parse-resume endpoint (no auth needed) */
+export async function extractCvText(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(
+    `${BASE}/api/resumes/tools/parse-resume`,
+    { method: "POST", body: form }
+  );
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Failed to read file.");
+  return json.text as string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CREDITS  (/api/credits)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -316,9 +343,9 @@ export interface CreditPlan {
 }
 
 export const CREDIT_PLANS: CreditPlan[] = [
-  { id: "starter", name: "Starter Pack",  cvCredits: 3,  exportCredits: 5,  toolCredits: 3,  price: 199, currency: "INR" },
-  { id: "pro",     name: "Pro Pack",      cvCredits: 10, exportCredits: 20, toolCredits: 10, price: 499, currency: "INR", popular: true },
-  { id: "max",     name: "Max Pack",      cvCredits: 25, exportCredits: 50, toolCredits: 25, price: 999, currency: "INR" },
+  { id: "starter", name: "Starter Pack",  cvCredits: 3,  exportCredits: 5,  toolCredits: 3,  price: 299, currency: "INR" },
+  { id: "pro",     name: "Pro Pack",      cvCredits: 6,  exportCredits: 10, toolCredits: 6,  price: 499, currency: "INR", popular: true },
+  { id: "max",     name: "Max Pack",      cvCredits: 15, exportCredits: 20, toolCredits: 15, price: 999, currency: "INR" },
 ];
 
 /** GET /api/credits — fetch current user credit balance */
@@ -326,7 +353,36 @@ export async function getCredits(): Promise<UserCredits> {
   return request<UserCredits>(`${API}/credits`);
 }
 
-/** POST /api/credits/purchase — buy a credit pack */
+/** POST /api/credits/create-order — create Razorpay order */
+export async function createRazorpayOrder(plan: string): Promise<{ orderId: string; amount: number; currency: string; plan: string }> {
+  return request<{ orderId: string; amount: number; currency: string; plan: string }>(`${API}/credits/create-order`, {
+    method: "POST",
+    body: JSON.stringify({ plan }),
+  });
+}
+
+/** POST /api/credits/verify-payment — verify signature + add credits */
+export async function verifyRazorpayPayment(payload: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  plan: string;
+}): Promise<UserCredits & { message: string }> {
+  return request<UserCredits & { message: string }>(`${API}/credits/verify-payment`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/** POST /api/credits/payment-failed — mark order as failed */
+export async function reportPaymentFailed(razorpay_order_id: string): Promise<void> {
+  await request(`${API}/credits/payment-failed`, {
+    method: "POST",
+    body: JSON.stringify({ razorpay_order_id }),
+  });
+}
+
+/** @deprecated use createRazorpayOrder + verifyRazorpayPayment instead */
 export async function purchaseCredits(planId: string): Promise<UserCredits & { message: string }> {
   return request<UserCredits & { message: string }>(`${API}/credits/purchase`, {
     method: "POST",

@@ -5,7 +5,7 @@ import { token } from "@/lib/api";
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 const CREDITS_KEY = "FitRezume_credits";
-const DEFAULT_CREDITS: UserCredits = { cvCredits: 3, exportCredits: 5, toolCredits: 3 };
+const DEFAULT_CREDITS: UserCredits = { cvCredits: 1, exportCredits: 2, toolCredits: 0 };
 
 function readLocal(): UserCredits | null {
   if (typeof window === "undefined") return null;
@@ -15,9 +15,9 @@ function readLocal(): UserCredits | null {
     const parsed = JSON.parse(raw) as Partial<UserCredits>;
     // Back-fill toolCredits for existing sessions that pre-date this field
     return {
-      cvCredits: parsed.cvCredits ?? 3,
-      exportCredits: parsed.exportCredits ?? 5,
-      toolCredits: parsed.toolCredits ?? 3,
+      cvCredits: parsed.cvCredits ?? 1,
+      exportCredits: parsed.exportCredits ?? 2,
+      toolCredits: parsed.toolCredits ?? 0,
     };
   } catch { return null; }
 }
@@ -72,13 +72,11 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const api = await getCredits();
-      if (api.cvCredits > 0 || api.exportCredits > 0) {
-        update({
-          cvCredits: api.cvCredits,
-          exportCredits: api.exportCredits,
-          toolCredits: api.toolCredits ?? local?.toolCredits ?? 3,
-        });
-      }
+      update({
+        cvCredits: api.cvCredits,
+        exportCredits: api.exportCredits,
+        toolCredits: api.toolCredits ?? 0,
+      });
       setError("");
     } catch {
       // API unavailable → local credits are the source of truth

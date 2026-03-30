@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { logout } from "@/lib/api";
 import amanSir from "../assets/AmanSir.png"; // adjust path
 import SecondImage from "../assets/SecondImage.png"; // adjust path
 
@@ -38,8 +41,9 @@ const TESTIMONIALS = [
 ];
 
 const PRICING = [
-  { name:"Free", price:"₹0",   period:"forever",   featured:false, cta:"Start free", features:["3 templates","PDF export","Basic AI suggestions","ATS score","Resume Roast (3/month)"] },
-  { name:"Pro",  price:"₹499", period:"per month", featured:true,  cta:"Go Pro",     features:["All 8 templates","Unlimited exports","Advanced AI writing","Interview Simulator","Job Match Analyzer","Resume history","Public share link"] },
+  { name:"Free",    price:"₹0",   period:"forever",   featured:false, cta:"Start free",    badge:"",        features:["1 CV",  "1 Export",  "8 templates","ATS Analyzer","No tool credits"] },
+  { name:"Starter", price:"₹299", period:"one-time",  featured:false, cta:"Buy Starter",   badge:"",        features:["3 CVs", "5 Exports", "3 Tool Credits","Resume Roast","Interview Sim","Job Match"] },
+  { name:"Pro",     price:"₹499", period:"one-time",  featured:true,  cta:"Buy Pro",       badge:"Popular", features:["6 CVs", "10 Exports","6 Tool Credits","Resume Roast","Interview Sim","Job Match","Public share link"] },
 ];
 
 /* ─────────────────────────────────────────────────────────
@@ -80,6 +84,13 @@ const Star = () => (
    PAGE COMPONENT
 ───────────────────────────────────────────────────────── */
 export default function Home() {
+  const { isLoggedIn } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/auth");
+  };
   const navRef        = useRef<HTMLElement>(null);
   const heroBgRef     = useRef<HTMLDivElement>(null);
   const heroBadgeRef  = useRef<HTMLDivElement>(null);
@@ -248,10 +259,17 @@ export default function Home() {
           ))}
         </div>
         <div style={{ display:"flex", gap:10 }}>
-          <Link href="/auth" className="fr-btn fr-btn-ghost fr-btn-sm" style={{ fontFamily: B }}>Sign in</Link>
-          <Link href="/auth" className="fr-btn fr-btn-forest fr-btn-sm fr-magnetic" style={{ fontFamily: B }}>
-            Get started free <ArrowRight size={13}/>
-          </Link>
+          {isLoggedIn ? (
+            <>
+              <Link href="/dashboard" className="fr-btn fr-btn-ghost fr-btn-sm" style={{ fontFamily: B }}>Dashboard</Link>
+              <button onClick={handleLogout} className="fr-btn fr-btn-forest fr-btn-sm" style={{ fontFamily: B, border: "none", cursor: "pointer" }}>Log out</button>
+            </>
+          ) : (
+            <>
+              <Link href="/auth" className="fr-btn fr-btn-ghost fr-btn-sm" style={{ fontFamily: B }}>Sign in</Link>
+              <Link href="/auth" className="fr-btn fr-btn-forest fr-btn-sm fr-magnetic" style={{ fontFamily: B }}>Get started free</Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -277,7 +295,7 @@ export default function Home() {
               Built for ambitious Indian students. Our AI writes, improves and optimises your CV for top MNCs, startups and campus placements — so you focus on the interview, not the format.
             </p>
             <div className="fr-hero-cta" ref={heroCtaRef}>
-              <Link href="/builder"   className="fr-btn fr-btn-gold   fr-btn-lg fr-magnetic" style={{ fontFamily: B }}>Build my CV — free <ArrowRight size={16}/></Link>
+              <Link href="/builder"   className="fr-btn fr-btn-gold   fr-btn-lg fr-magnetic" style={{ fontFamily: B }}>Build my CV — free</Link>
               <Link href="/templates" className="fr-btn fr-btn-outline fr-btn-lg"             style={{ fontFamily: B }}>View templates</Link>
             </div>
             <div className="fr-social-proof" ref={heroSocialRef}>
@@ -625,9 +643,12 @@ export default function Home() {
           <div className="fr-pricing-grid">
             {PRICING.map((p,i) => (
               <div key={i} className={`fr-price${p.featured?" fr-price-featured":""}`}>
-                <span className="fr-price-plan"   style={{ fontFamily: M }}>{p.name}</span>
-                <div style={{ display:"flex", alignItems:"baseline", gap:5, marginBottom:6 }}>
-                  <span className="fr-price-num"    style={{ fontFamily: F }}>{p.price}</span>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                  <span className="fr-price-plan" style={{ fontFamily: M }}>{p.name}</span>
+                  {p.badge && <span style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:".1em", padding:"2px 8px", borderRadius:20, background:"#2563EB", color:"#fff", fontFamily: M }}>{p.badge}</span>}
+                </div>
+                <div style={{ display:"flex", alignItems:"baseline", gap:5, marginBottom:4 }}>
+                  <span className="fr-price-num" style={{ fontFamily: F }}>{p.price}</span>
                   <span className="fr-price-period" style={{ fontFamily: B }}>/ {p.period}</span>
                 </div>
                 <ul className="fr-price-features">
@@ -635,7 +656,7 @@ export default function Home() {
                     <li key={f} className="fr-price-feat" style={{ fontFamily: B }}><CheckIcon gold={p.featured}/>{f}</li>
                   ))}
                 </ul>
-                <Link href="/auth" style={{ fontFamily: B }} className={`fr-price-cta${p.featured?" fr-price-cta-gold":" fr-price-cta-plain"}`}>
+                <Link href={isLoggedIn ? "/dashboard" : "/auth"} style={{ fontFamily: B }} className={`fr-price-cta${p.featured?" fr-price-cta-gold":" fr-price-cta-plain"}`}>
                   {p.cta}
                 </Link>
               </div>
@@ -655,7 +676,7 @@ export default function Home() {
             Join 2,50,000+ students across India who've used FitRezume to build CVs that actually get read and calls that actually come.
           </p>
           <Link href="/auth" className="fr-btn fr-btn-forest fr-btn-lg fr-magnetic" style={{ fontFamily: B }}>
-            Build my CV now — free <ArrowRight size={17}/>
+            Build my CV now — free
           </Link>
           <p className="fr-final-hint" style={{ fontFamily: M }}>No credit card · 2 minute setup</p>
         </div>
@@ -1125,7 +1146,7 @@ body::before {
 .fr-test-role-light { color: rgba(255,255,255,.6); }
 
 /* ── PRICING ── */
-.fr-pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; max-width: 760px; margin: 0 auto; }
+.fr-pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 960px; margin: 0 auto; }
 .fr-price {
   padding: 36px 32px; border-radius: 14px; border: 2px solid var(--border);
   background: var(--white); transition: all .35s cubic-bezier(.16,1,.3,1);
@@ -1186,6 +1207,7 @@ body::before {
   .fr-test-asymmetric { grid-template-columns: 1fr; }
   .fr-footer-grid { gap: 28px; }
   .fr-about-grid { gap: 48px; }
+  .fr-pricing-grid { grid-template-columns: repeat(2, 1fr); max-width: 680px; }
 }
 
 /* ── Mobile (≤768px) ── */
@@ -1257,6 +1279,7 @@ body::before {
 
   /* Pricing */
   .fr-pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
+  .fr-pricing-grid .fr-price { padding: 24px 20px; }
 
   /* Final CTA */
   .fr-final-cta { padding: 80px 20px; }

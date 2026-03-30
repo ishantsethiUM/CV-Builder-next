@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useState, useRef, useCallback } from "react";
-import { roastCV, type RoastResult } from "@/lib/api";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { roastCV, type RoastResult, token } from "@/lib/api";
 import { Flame, ChevronLeft, RotateCcw, Sparkles, Copy, Check, AlertCircle, FileText, Upload, X, Lock, CreditCard } from "lucide-react";
 import { useCredits } from "@/contexts/CreditsContext";
 
@@ -26,7 +27,12 @@ async function extractText(file: File): Promise<string> {
 }
 
 export default function RoastPage() {
+  const router = useRouter();
   const { credits, openBuyModal, deductToolCredit, doTrackToolUse } = useCredits();
+
+  useEffect(() => {
+    if (!token.get()) router.replace("/auth");
+  }, [router]);
   const [level, setLevel] = useState("medium");
   const [file, setFile] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
@@ -88,7 +94,7 @@ export default function RoastPage() {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 740, margin: "0 auto", padding: "52px 36px 80px" }}>
+      <div className="page-container">
 
         {/* ── CREDIT GATE ── */}
         {noCredits ? (

@@ -122,6 +122,14 @@ export default function Dashboard() {
     setUploadError(""); setUploadFile(file);
   };
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const filtered = cvs.filter(r => r.title?.toLowerCase().includes(q.toLowerCase()));
   const avgATS = cvs.length ? Math.round(cvs.reduce((a, c) => a + (c.atsScore || 0), 0) / cvs.length) : 0;
   const greeting = hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
@@ -134,7 +142,7 @@ export default function Dashboard() {
       <aside style={{
         position: "fixed", left: 0, top: 0, bottom: 0, width: 220,
         background: C.white, borderRight: `1px solid ${C.border}`,
-        display: "flex", flexDirection: "column",
+        display: isMobile ? "none" : "flex", flexDirection: "column",
         padding: "24px 0", zIndex: 50,
       }}>
         {/* Logo */}
@@ -182,11 +190,31 @@ export default function Dashboard() {
         </div>
       </aside>
 
+      {/* ── MOBILE TOP NAV ──────────────────────────── */}
+      {isMobile && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: C.white, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", height: 56 }}>
+          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 26, height: 26, background: C.forest, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6 }}>
+              <FileText size={12} color={C.gold} />
+            </div>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 18, fontWeight: 700, color: C.ink }}>FitRezume</span>
+          </Link>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {noCVCredits
+              ? <button onClick={openBuyModal} style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 6, background: C.forest, color: "#fff", border: "none", cursor: "pointer" }}>+ New CV</button>
+              : <Link href="/builder" style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 6, background: C.forest, color: "#fff", textDecoration: "none" }}>+ New CV</Link>}
+            <button onClick={async () => { await logout(); router.push("/auth"); }} style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, cursor: "pointer", padding: "6px 10px", borderRadius: 6 }}>
+              <LogOut size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── MAIN ─────────────────────────────────────── */}
-      <main style={{ marginLeft: 220, flex: 1, minWidth: 0 }}>
+      <main style={{ marginLeft: isMobile ? 0 : 220, flex: 1, minWidth: 0, paddingTop: isMobile ? 56 : 0 }}>
 
         {/* ── PAGE HEADER ─────────────────────────────── */}
-        <div style={{ padding: "44px 48px 0" }}>
+        <div style={{ padding: isMobile ? "24px 16px 0" : "44px 48px 0" }}>
           <p style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: ".12em", color: C.muted, textTransform: "uppercase", marginBottom: 8 }}>
             Good {greeting}
           </p>
@@ -195,7 +223,7 @@ export default function Dashboard() {
           </h1>
 
           {/* ── STATS STRIP ────────────────────────────── */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 40 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 12, marginBottom: 40 }}>
             {[
               { n: loading ? "—" : String(cvs.length), label: "CVs created", sub: "total" },
               { n: loading ? "—" : `${avgATS}`, label: "Avg ATS score", sub: "/ 100" },
@@ -214,37 +242,35 @@ export default function Dashboard() {
         </div>
 
         {/* ── BODY ─────────────────────────────────────── */}
-        <div style={{ padding: "0 48px 64px", display: "grid", gridTemplateColumns: "1fr 280px", gap: 32, alignItems: "start" }}>
+        <div style={{ padding: isMobile ? "0 16px 64px" : "0 48px 64px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 280px", gap: 32, alignItems: "start" }}>
 
           {/* LEFT */}
           <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
 
             {/* ── YOUR CVs ────────────────────────────────── */}
             <section>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: isMobile ? 10 : 0, marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 20, fontWeight: 700, color: C.ink, letterSpacing: "-0.5px" }}>Your CVs</h2>
                   <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: C.muted, background: C.border, padding: "2px 8px", borderRadius: 20 }}>
                     {filtered.length}
                   </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ position: "relative" }}>
-                    <input value={q} onChange={e => setQ(e.target.value)} placeholder="Filter…"
-                      style={{ padding: "7px 12px", borderRadius: 6, border: `1px solid ${C.border}`, fontSize: 13, width: 160, outline: "none", background: C.white, fontFamily: FF, color: C.ink }} />
-                  </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <input value={q} onChange={e => setQ(e.target.value)} placeholder="Filter…"
+                    style={{ padding: "7px 12px", borderRadius: 6, border: `1px solid ${C.border}`, fontSize: 13, width: isMobile ? 120 : 160, outline: "none", background: C.white, fontFamily: FF, color: C.ink }} />
                   <button onClick={fetchCVs} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "7px 10px", color: C.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontSize: 12 }}>
-                    <RefreshCcw size={12} /> Refresh
+                    <RefreshCcw size={12} />
                   </button>
-                  <button onClick={openUpload} style={{ display: "flex", alignItems: "center", gap: 6, background: C.white, color: C.forest, padding: "8px 14px", borderRadius: 6, fontSize: 13, fontWeight: 600, border: `1px solid ${C.forest}`, cursor: "pointer" }}>
-                    <Upload size={14} /> Upload
+                  <button onClick={openUpload} style={{ display: "flex", alignItems: "center", gap: 6, background: C.white, color: C.forest, padding: "8px 12px", borderRadius: 6, fontSize: 13, fontWeight: 600, border: `1px solid ${C.forest}`, cursor: "pointer" }}>
+                    <Upload size={14} /> {!isMobile && "Upload"}
                   </button>
                   {noCVCredits ? (
-                    <button onClick={openBuyModal} style={{ display: "flex", alignItems: "center", gap: 6, background: C.forest, color: C.white, padding: "8px 14px", borderRadius: 6, fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
+                    <button onClick={openBuyModal} style={{ display: "flex", alignItems: "center", gap: 6, background: C.forest, color: C.white, padding: "8px 12px", borderRadius: 6, fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
                       <Plus size={14} /> New CV
                     </button>
                   ) : (
-                    <Link href="/builder" style={{ display: "flex", alignItems: "center", gap: 6, background: C.forest, color: C.white, padding: "8px 14px", borderRadius: 6, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                    <Link href="/builder" style={{ display: "flex", alignItems: "center", gap: 6, background: C.forest, color: C.white, padding: "8px 12px", borderRadius: 6, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
                       <Plus size={14} /> New CV
                     </Link>
                   )}
@@ -286,45 +312,46 @@ export default function Dashboard() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {!loading && filtered.map(r => (
                   <div key={r.id}
-                    style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, padding: "18px 20px", display: "flex", alignItems: "center", gap: 16, opacity: deleting === r.id ? 0.4 : 1, transition: "border-color .15s" }}
+                    style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, padding: isMobile ? "14px 14px" : "18px 20px", display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, opacity: deleting === r.id ? 0.4 : 1, transition: "border-color .15s" }}
                     onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
                     onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
 
                     {/* Doc icon */}
-                    <div style={{ width: 42, height: 52, background: C.cream, border: `1px solid ${C.border}`, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <FileText size={18} color={C.forest} />
-                    </div>
+                    {!isMobile && (
+                      <div style={{ width: 42, height: 52, background: C.cream, border: `1px solid ${C.border}`, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <FileText size={18} color={C.forest} />
+                      </div>
+                    )}
 
                     {/* Title + meta */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.title}</p>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <p style={{ fontSize: isMobile ? 13 : 15, fontWeight: 600, color: C.ink, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.title}</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: C.muted, background: C.cream, padding: "2px 6px", borderRadius: 3, border: `1px solid ${C.border}` }}>
                           {r.template || "General"}
                         </span>
-                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: C.muted }}>
-                          <Clock size={11} />
-                          {timeAgo(r.updatedAt)}
-                        </span>
-                        {r.status === "active" && (
-                          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.forest, fontWeight: 600 }}>
-                            <CheckCircle2 size={11} /> Active
+                        {!isMobile && (
+                          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: C.muted }}>
+                            <Clock size={11} />
+                            {timeAgo(r.updatedAt)}
                           </span>
                         )}
                       </div>
                     </div>
 
                     {/* ATS */}
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                      <AtsRing score={r.atsScore || 0} />
-                      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: C.muted }}>ATS</span>
-                    </div>
+                    {!isMobile && (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                        <AtsRing score={r.atsScore || 0} />
+                        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, color: C.muted }}>ATS</span>
+                      </div>
+                    )}
 
                     {/* Actions */}
                     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                       <Link href={`/builder?id=${r.id}`}
                         style={{ padding: "7px 10px", borderRadius: 5, border: `1px solid ${C.border}`, background: C.cream, color: C.ink, display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, textDecoration: "none" }}>
-                        <Edit3 size={13} /> Edit
+                        <Edit3 size={13} /> {!isMobile && "Edit"}
                       </Link>
                       <button onClick={() => window.open(`/builder?id=${r.id}`, "_blank")} style={{ padding: "7px 10px", borderRadius: 5, border: `1px solid ${C.border}`, background: C.cream, color: C.ink, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500 }}
                         title="Open in builder to export PDF">

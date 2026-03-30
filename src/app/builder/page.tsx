@@ -1,13 +1,12 @@
 "use client";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
-import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { createResume, updateResume, getResume, aiBullets, aiImprove } from "@/lib/api";
+import { createResume, updateResume, getResume, aiBullets, aiImprove, aiATS } from "@/lib/api";
 import { useCredits } from "@/contexts/CreditsContext";
 import {
   FileText, ChevronLeft, Save, Download, Sparkles,
   BarChart2, Plus, Trash2, X, Check, AlertCircle,
-  User, Briefcase, GraduationCap, Wrench, FolderOpen, Award,
   Eye, EyeOff, ChevronDown, ChevronUp, Layout, GripVertical
 } from "lucide-react";
 
@@ -17,6 +16,7 @@ type CV = {
   experience: { id: string; company: string; role: string; period: string; location: string; bullets: string[] }[];
   education: { id: string; school: string; degree: string; field: string; period: string; gpa: string; honors: string }[];
   skills: { technical: string; soft: string; languages: string; certifications: string };
+  skillLevels: Record<string, number>; // skill name → 1-5 stars
   projects: { id: string; name: string; tech: string; url: string; description: string }[];
   achievements: { id: string; text: string }[];
 };
@@ -25,17 +25,10 @@ const INIT: CV = {
   personal: { name: "", email: "", phone: "", location: "", linkedin: "", github: "", website: "", summary: "" },
   experience: [], education: [],
   skills: { technical: "", soft: "", languages: "", certifications: "" },
+  skillLevels: {},
   projects: [], achievements: [],
 };
 
-const TABS = [
-  { id: "Personal", icon: User, label: "Personal Info" },
-  { id: "Experience", icon: Briefcase, label: "Experience" },
-  { id: "Education", icon: GraduationCap, label: "Education" },
-  { id: "Skills", icon: Wrench, label: "Skills" },
-  { id: "Projects", icon: FolderOpen, label: "Projects" },
-  { id: "Achievements", icon: Award, label: "Achievements" },
-];
 
 const TEMPLATES = [
   { id: "Minimal",   label: "Minimal"   },
@@ -67,74 +60,50 @@ const THEME = {
 type SetCV = React.Dispatch<React.SetStateAction<CV>>;
 
 function EditableSpan({
-  value, onChange, style, placeholder = "Click to edit", multiline = false, className
+  value, style, placeholder = "", className
 }: {
-  value: string; onChange: (v: string) => void; style?: React.CSSProperties;
+  value: string; onChange?: (v: string) => void; style?: React.CSSProperties;
   placeholder?: string; multiline?: boolean; className?: string;
 }) {
-  const [editing, setEditing] = useState(false);
-  const GOLD = "#2563EB";
+  // Read-only — editing is done through the left panel only
+  return (
+    <span style={{ ...style }} className={className}>
+      {value || (placeholder ? <span style={{ color: "#bbb", fontStyle: "italic", fontWeight: 400 }}>{placeholder}</span> : null)}
+    </span>
+  );
+}
 
-  const hoverStyle: React.CSSProperties = {
-    cursor: "text",
-    borderBottom: `1.5px dashed ${GOLD}66`,
-    transition: "border-color .15s",
-    minWidth: 20,
-    display: "inline-block",
-  };
-  const baseInputStyle: React.CSSProperties = {
-    ...style,
-    border: `1.5px solid ${GOLD}`,
-    borderRadius: 3,
-    outline: "none",
-    background: `${GOLD}0d`,
-    boxShadow: `0 0 0 3px ${GOLD}22`,
-    padding: "1px 4px",
-    fontFamily: "inherit",
-    fontSize: "inherit",
-    fontWeight: "inherit",
-    color: "inherit",
-    letterSpacing: "inherit",
-    lineHeight: "inherit",
-    width: "100%",
-    resize: multiline ? "vertical" : undefined,
+// ── Tag input component (individual chips, no commas) ────────────────────────
+function TagInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const [draft, setDraft] = React.useState("");
+  const tags = value.split(",").map(s => s.trim()).filter(Boolean);
+
+  const addTag = (raw: string) => {
+    const t = raw.trim().replace(/,/g, "");
+    if (!t || tags.includes(t)) { setDraft(""); return; }
+    onChange([...tags, t].join(", "));
+    setDraft("");
   };
 
-  if (editing) {
-    if (multiline) {
-      return (
-        <textarea autoFocus value={value}
-          onChange={e => onChange(e.target.value)}
-          onBlur={() => setEditing(false)}
-          onKeyDown={e => { if (e.key === "Escape") setEditing(false); }}
-          style={{ ...baseInputStyle, minHeight: 56, display: "block" }}
-          className={className}
-        />
-      );
-    }
-    return (
-      <input autoFocus value={value}
-        onChange={e => onChange(e.target.value)}
-        onBlur={() => setEditing(false)}
-        onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") setEditing(false); }}
-        style={baseInputStyle}
-        className={className}
-      />
-    );
-  }
+  const removeTag = (tag: string) => onChange(tags.filter(t => t !== tag).join(", "));
+
+  const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(draft); }
+    if (e.key === "Backspace" && !draft && tags.length) removeTag(tags[tags.length - 1]);
+  };
 
   return (
-    <span
-      role="button" tabIndex={0} title="Click to edit"
-      onClick={() => setEditing(true)}
-      onKeyDown={e => { if (e.key === "Enter") setEditing(true); }}
-      style={{ ...style, ...hoverStyle }}
-      onMouseEnter={e => (e.currentTarget.style.borderBottomColor = `${GOLD}cc`)}
-      onMouseLeave={e => (e.currentTarget.style.borderBottomColor = `${GOLD}66`)}
-      className={className}
-    >
-      {value || <span style={{ color: "#bbb", fontStyle: "italic", fontWeight: 400 }}>{placeholder}</span>}
-    </span>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 6, background: "#fff", minHeight: 42, alignItems: "center", cursor: "text" }}
+      onClick={e => (e.currentTarget.querySelector("input") as HTMLInputElement)?.focus()}>
+      {tags.map(tag => (
+        <span key={tag} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", background: "#EDE9FE", color: "#5B21B6", borderRadius: 99, fontSize: 12, fontWeight: 600, lineHeight: 1.4 }}>
+          {tag}
+          <button onClick={e => { e.stopPropagation(); removeTag(tag); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1, color: "#7C3AED", fontSize: 14 }}>×</button>
+        </span>
+      ))}
+      <input value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={handleKey} onBlur={() => { if (draft.trim()) addTag(draft); }}
+        placeholder={tags.length ? "" : placeholder} style={{ border: "none", outline: "none", fontSize: 13, color: "#374151", background: "transparent", minWidth: 120, flex: 1 }} />
+    </div>
   );
 }
 
@@ -735,20 +704,22 @@ function SidebarPreview({ cv, setCV }: { cv: CV; setCV: SetCV }) {
   const FONT        = "'Inter', system-ui, sans-serif";
   const upP = (f: keyof CV["personal"], v: string) => setCV(c => ({ ...c, personal: { ...c.personal, [f]: v } }));
 
-  // Deterministic tick level per skill (avoids re-render flicker)
-  const tickLevel = (str: string, idx: number) =>
-    ((str.charCodeAt(0) + str.length + idx) % 3) + 4; // 4-6 out of 7
+  // Use skillLevels from CV data, fallback to 4 stars
+  const getSkillLevel = (str: string) => cv.skillLevels?.[str] ?? 4;
 
-  const TickBar = ({ label, level }: { label: string; level: number }) => (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-      <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: ACCENT, flex: 1 }}>{label}</p>
-      <div style={{ display: "flex", gap: 2 }}>
-        {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} style={{ width: 6, height: 8, borderRadius: 1, background: i < level ? ACCENT : "#CCCCCC" }} />
-        ))}
+  const TickBar = ({ label }: { label: string }) => {
+    const level = Math.min(5, Math.max(1, getSkillLevel(label)));
+    return (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
+        <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: ACCENT, flex: 1 }}>{label}</p>
+        <div style={{ display: "flex", gap: 3 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: i < level ? ACCENT : "#CCCCCC" }} />
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const SideHead = ({ title }: { title: string }) => (
     <div style={{ display: "flex", alignItems: "center", gap: 7, margin: "18px 0 9px" }}>
@@ -805,7 +776,7 @@ function SidebarPreview({ cv, setCV }: { cv: CV; setCV: SetCV }) {
           <>
             <SideHead title="Skills" />
             {technicalSkills.map((skill, i) => (
-              <TickBar key={i} label={skill} level={tickLevel(skill, i)} />
+              <TickBar key={i} label={skill} />
             ))}
           </>
         )}
@@ -815,7 +786,7 @@ function SidebarPreview({ cv, setCV }: { cv: CV; setCV: SetCV }) {
           <>
             <SideHead title="Language" />
             {languages.map((lang, i) => (
-              <TickBar key={i} label={lang} level={tickLevel(lang, i)} />
+              <TickBar key={i} label={lang} />
             ))}
           </>
         )}
@@ -879,7 +850,7 @@ function SidebarPreview({ cv, setCV }: { cv: CV; setCV: SetCV }) {
             <RightHead title="Skills" />
             {cv.skills.soft.split(",").map((s, i) => {
               const sk = s.trim(); if (!sk) return null;
-              return <TickBar key={i} label={sk} level={tickLevel(sk, i)} />;
+              return <TickBar key={i} label={sk} />;
             })}
           </>
         )}
@@ -1178,21 +1149,23 @@ const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => 
 };
 
 // ── AI Suggestion Box ───────────────────────────────────────────────────────
-function AIBox({ context, targetId, cv, setCV, onClose }: { context: string, targetId?: string, cv: CV, setCV: any, onClose: () => void }) {
+function AIBox({ context, targetId, setCV, onClose, onUsed, alreadyUsed }: { context: string, targetId?: string, cv: CV, setCV: any, onClose: () => void, onUsed: () => void, alreadyUsed?: boolean }) {
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [generated, setGenerated] = useState(alreadyUsed ?? false);
 
   const generate = async () => {
     if (!input.trim()) return;
     setLoading(true); setError(""); setSuggestions([]);
     try {
-      let results = context === "skills" 
+      let results = context === "skills"
         ? (await aiImprove(input)).flatMap(r => r.split(",").map(s => s.trim())).filter(Boolean)
         : await aiBullets(input);
       setSuggestions(results.map((text: string) => ({ text, inserted: false })));
-    } catch (e: any) { setError(e.message || "Request failed."); } 
+      if (!generated) { setGenerated(true); onUsed(); }
+    } catch (e: any) { setError(e.message || "Request failed."); }
     finally { setLoading(false); }
   };
 
@@ -1202,12 +1175,18 @@ function AIBox({ context, targetId, cv, setCV, onClose }: { context: string, tar
       if (context === "experience-bullets" && targetId) setCV((c: CV) => ({ ...c, experience: c.experience.map(e => e.id === targetId ? { ...e, bullets: [...e.bullets.filter(b => b.trim()), s.text] } : e) }));
       else if (context === "skills") setCV((c: CV) => ({ ...c, skills: { ...c.skills, technical: [...c.skills.technical.split(",").map(x => x.trim()).filter(Boolean), s.text].join(", ") } }));
       else if (context === "projects-description" && targetId) setCV((c: CV) => ({ ...c, projects: c.projects.map(p => p.id === targetId ? { ...p, description: s.text } : p) }));
-      else if (context === "summary") setCV((c: CV) => ({ ...c, personal: { ...c.personal, summary: s.text } }));
+      else if (context === "summary") {
+        // Append to existing summary instead of replacing
+        setCV((c: CV) => {
+          const existing = c.personal.summary.trim();
+          return { ...c, personal: { ...c.personal, summary: existing ? `${existing} ${s.text}` : s.text } };
+        });
+      }
     } else {
       if (context === "experience-bullets" && targetId) setCV((c: CV) => ({ ...c, experience: c.experience.map(e => e.id === targetId ? { ...e, bullets: e.bullets.filter(b => b !== s.text) } : e) }));
       else if (context === "skills") setCV((c: CV) => ({ ...c, skills: { ...c.skills, technical: c.skills.technical.split(",").map(x => x.trim()).filter(x => x !== s.text).join(", ") } }));
       else if (context === "projects-description" && targetId) setCV((c: CV) => ({ ...c, projects: c.projects.map(p => p.id === targetId ? { ...p, description: "" } : p) }));
-      else if (context === "summary") setCV((c: CV) => ({ ...c, personal: { ...c.personal, summary: "" } }));
+      else if (context === "summary") setCV((c: CV) => ({ ...c, personal: { ...c.personal, summary: c.personal.summary.replace(s.text, "").replace(/\s+/g, " ").trim() } }));
     }
     setSuggestions(prev => prev.map((item, i) => i === idx ? { ...item, inserted: !item.inserted } : item));
   };
@@ -1223,9 +1202,10 @@ function AIBox({ context, targetId, cv, setCV, onClose }: { context: string, tar
       </div>
       <textarea value={input} onChange={e => setInput(e.target.value)} placeholder="Describe what you did or want to improve…" style={{ ...inputStyle, minHeight: 64, resize: "vertical" }} onFocus={onFocus} onBlur={onBlur} />
       {error && <p style={{ fontSize: 12, color: THEME.danger, marginTop: 6 }}>{error}</p>}
-      <button onClick={generate} disabled={loading || !input.trim()} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, padding: "8px 18px", borderRadius: "4px", background: loading || !input.trim() ? THEME.textMuted : THEME.primary, color: "#fff", border: "none", cursor: loading ? "default" : "pointer", fontSize: 13, fontWeight: 600, opacity: !input.trim() ? 0.6 : 1 }}>
-        <Sparkles size={13} />{loading ? "Generating…" : "Generate Suggestions"}
+      <button onClick={generate} disabled={loading || !input.trim() || generated} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, padding: "8px 18px", borderRadius: "4px", background: generated ? THEME.border : loading || !input.trim() ? THEME.textMuted : THEME.primary, color: generated ? THEME.textMuted : "#fff", border: "none", cursor: generated ? "not-allowed" : loading ? "default" : "pointer", fontSize: 13, fontWeight: 600, opacity: !input.trim() && !generated ? 0.6 : 1 }}>
+        <Sparkles size={13} />{loading ? "Generating…" : generated ? "Already Generated" : "Generate Suggestions"}
       </button>
+      {generated && <p style={{ fontSize: 11, color: THEME.textMuted, marginTop: 5, fontFamily: "'IBM Plex Mono', monospace" }}>AI used once for this section — click suggestions above to apply them.</p>}
       {suggestions.length > 0 && (
         <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
           {suggestions.map((s, i) => (
@@ -1247,14 +1227,17 @@ function BuilderInner() {
   const resumeId = searchParams.get("id");
 
   const [cv, setCV] = useState<CV>(INIT);
-  const [tab, setTab] = useState("Personal");
+  // tab state removed — sections are now always-visible accordion cards
   const [template, setTemplate] = useState("Minimal");
   const [showATS, setShowATS] = useState(false);
+  const [atsResult, setAtsResult] = useState<{ score: number; keywords_found: string[]; missing_keywords: string[]; suggestions: string[]; strongPoints: string[] } | null>(null);
+  const [atsLoading, setAtsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [loadingCV, setLoadingCV] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [aiOpen, setAiOpen] = useState<string | null>(null);
+  const [usedAI, setUsedAI] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const previewRef = useRef<HTMLDivElement>(null);
   const { credits, openBuyModal, doTrackExport, deductExportCredit, deductCvCredit } = useCredits();
@@ -1286,7 +1269,6 @@ function BuilderInner() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  useEffect(() => { setAiOpen(null); }, [tab]);
 
   useEffect(() => {
     if (!resumeId) return;
@@ -1296,50 +1278,137 @@ function BuilderInner() {
 
   const upP = (f: string, v: string) => setCV(c => ({ ...c, personal: { ...c.personal, [f]: v } }));
 
+  const cvToText = () => {
+    const lines: string[] = [];
+    const p = cv.personal;
+    if (p.name) lines.push(p.name);
+    if (p.summary) lines.push(p.summary);
+    cv.experience.forEach(e => { lines.push(`${e.role} at ${e.company} (${e.period})`); e.bullets.forEach(b => b && lines.push(b)); });
+    cv.education.forEach(e => lines.push(`${e.degree}${e.field ? " in " + e.field : ""} at ${e.school}`));
+    if (cv.skills.technical) lines.push(`Skills: ${cv.skills.technical}`);
+    cv.projects.forEach(proj => lines.push(`${proj.name}: ${proj.description}`));
+    cv.achievements.forEach(a => a.text && lines.push(a.text));
+    return lines.join("\n");
+  };
+
+  const runATS = async () => {
+    const text = cvToText();
+    if (!text.trim()) return;
+    setAtsLoading(true);
+    try {
+      const r = await aiATS(text);
+      setAtsResult(r);
+    } catch { /* ignore */ }
+    finally { setAtsLoading(false); }
+  };
+
+  const AI_USED_KEY = resumeId ? `FitRezume_aiUsed_${resumeId}` : null;
+
+  useEffect(() => {
+    if (!AI_USED_KEY) { setUsedAI(new Set()); return; }
+    try {
+      const raw = localStorage.getItem(AI_USED_KEY);
+      setUsedAI(raw ? new Set(JSON.parse(raw)) : new Set());
+    } catch { setUsedAI(new Set()); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeId]);
+
+  const markAIUsed = (id: string) => {
+    setUsedAI(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      if (AI_USED_KEY) localStorage.setItem(AI_USED_KEY, JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
+
   const handleDownload = async () => {
     if (credits !== null && credits.exportCredits === 0) { openBuyModal(); return; }
     const el = previewRef.current;
     if (!el) return;
-    const html = `<!DOCTYPE html><html><head>
-      <meta charset="utf-8"/>
-      <title>${cv.personal.name || "CV"}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-      <style>
-        @page { size: A4 portrait; margin: 0; }
-        *, *::before, *::after { box-sizing: border-box; }
-        html { margin: 0; padding: 0; }
-        body {
-          margin: 0; padding: 0;
-          width: 210mm;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        /* Keep sections together — avoid mid-section page breaks */
-        div[style*="margin-bottom: 18"], div[style*="marginBottom: 18"],
-        div[style*="margin-bottom: 16"], div[style*="marginBottom: 16"] {
-          page-break-inside: avoid;
-        }
-        h1, h2, h3 { page-break-after: avoid; }
-      </style>
-    </head><body>${el.innerHTML}</body></html>`;
-    // Open in hidden iframe via blob URL and trigger browser print-to-PDF (A4, multi-page)
-    const blob = new Blob([html], { type: "text/html" });
-    const blobUrl = URL.createObjectURL(blob);
-    const iframe = document.createElement("iframe");
-    iframe.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;";
-    iframe.src = blobUrl;
-    iframe.onload = () => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-      setTimeout(() => {
-        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-        URL.revokeObjectURL(blobUrl);
-      }, 3000);
-    };
-    document.body.appendChild(iframe);
-    // Deduct export credit
+
+    // Deduct credit first (optimistic)
     deductExportCredit();
     doTrackExport(resumeId ?? undefined).catch(() => null);
+
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
+      // Temporarily ensure element is fully rendered at natural width
+      const prevTransform = (el.parentElement as HTMLElement)?.style.transform;
+      if (el.parentElement) (el.parentElement as HTMLElement).style.transform = "none";
+
+      // Inject a style tag to hide dashed edit underlines and blue page-break lines during capture
+      const cleanStyle = document.createElement("style");
+      cleanStyle.id = "__cv-export-clean";
+      cleanStyle.textContent = `
+        [data-previewref] span[role="button"],
+        [data-previewref] span[tabindex="0"] { border-bottom: none !important; }
+      `;
+      // Mark the element so the selector matches
+      el.setAttribute("data-previewref", "true");
+      document.head.appendChild(cleanStyle);
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        // Ignore the page-break overlay sibling
+        ignoreElements: (node) => node.id === "__cv-export-clean",
+      });
+
+      // Restore
+      el.removeAttribute("data-previewref");
+      cleanStyle.remove();
+      if (el.parentElement) (el.parentElement as HTMLElement).style.transform = prevTransform || "";
+
+      const imgData = canvas.toDataURL("image/png");
+      // A4 dimensions in mm
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = 210;
+      const pageH = 297;
+
+      // px per mm at this canvas scale (canvas.width corresponds to 210mm)
+      const pxPerMm = canvas.width / pageW;
+      const pageHeightPx = Math.round(pageH * pxPerMm);
+      const totalHeightMm = canvas.height / pxPerMm;
+
+      if (totalHeightMm <= pageH) {
+        // Fits on one page — use actual height, no blank space at bottom
+        pdf.addImage(imgData, "PNG", 0, 0, pageW, totalHeightMm);
+      } else {
+        // Multi-page: slice canvas into A4 pages, fill each page fully
+        let yOffset = 0;
+        while (yOffset < canvas.height) {
+          const sliceH = Math.min(pageHeightPx, canvas.height - yOffset);
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = pageHeightPx; // always full A4 height
+          const ctx = pageCanvas.getContext("2d")!;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(canvas, 0, yOffset, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+          const pageImgData = pageCanvas.toDataURL("image/png");
+          if (yOffset > 0) pdf.addPage();
+          pdf.addImage(pageImgData, "PNG", 0, 0, pageW, pageH);
+          yOffset += pageHeightPx;
+        }
+      }
+
+      pdf.save(`${cv.personal.name || "CV"}.pdf`);
+    } catch {
+      // Fallback: browser print dialog
+      const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="utf-8"/><style>@page{size:A4;margin:0}body{margin:0;width:210mm}</style></head><body>${el.innerHTML}</body></html>`], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const iframe = document.createElement("iframe");
+      iframe.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:210mm;height:297mm;border:none;";
+      iframe.src = url;
+      iframe.onload = () => { iframe.contentWindow?.print(); setTimeout(() => { iframe.remove(); URL.revokeObjectURL(url); }, 3000); };
+      document.body.appendChild(iframe);
+    }
   };
 
   const handleSave = async () => {
@@ -1367,20 +1436,58 @@ function BuilderInner() {
     }
   };
 
-  const AITrigger = ({ id, label }: { id: string; label: string }) => (
-    <button onClick={() => setAiOpen(prev => prev === id ? null : id)}
-      style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: "4px", border: `1px solid ${aiOpen === id ? THEME.gold : THEME.border}`, background: aiOpen === id ? "rgba(201,169,110,.1)" : "transparent", color: aiOpen === id ? THEME.primary : THEME.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.5px", transition: "all 0.15s", fontFamily: "'IBM Plex Mono', monospace" }}>
-      <Sparkles size={11} color={aiOpen === id ? THEME.gold : THEME.textMuted} />{label}
-    </button>
-  );
+  const AITrigger = ({ id, label }: { id: string; label: string }) => {
+    const used = usedAI.has(id);
+    return (
+      <button
+        onClick={() => setAiOpen(prev => prev === id ? null : id)}
+        style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: "4px", border: `1px solid ${used ? THEME.border : aiOpen === id ? THEME.gold : THEME.border}`, background: used ? "transparent" : aiOpen === id ? "rgba(201,169,110,.1)" : "transparent", color: used ? THEME.textMuted : aiOpen === id ? THEME.primary : THEME.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.5px", transition: "all 0.15s", fontFamily: "'IBM Plex Mono', monospace", opacity: used ? 0.6 : 1 }}
+        title={used ? "AI already used — click to view suggestions" : "Open AI assistant"}
+      >
+        {used
+          ? <Check size={11} color={THEME.success} />
+          : <Sparkles size={11} color={aiOpen === id ? THEME.gold : THEME.textMuted} />}
+        {used ? "AI Used" : label}
+      </button>
+    );
+  };
 
   const toggleCollapse = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));
 
   if (loadingCV) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: THEME.background, fontFamily: THEME.fontFamily }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${THEME.border}`, borderTopColor: THEME.gold, borderRadius: "50%", margin: "0 auto 16px" }} className="spin" />
-        <p style={{ fontSize: 14, fontWeight: 600, color: THEME.textMuted }}>Loading your document…</p>
+      <div style={{ textAlign: "center", padding: "0 24px" }}>
+        {/* Animated document icon */}
+        <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 28px" }}>
+          <div style={{ width: 72, height: 72, borderRadius: 16, background: THEME.darkBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <FileText size={32} color={THEME.gold} />
+          </div>
+          {/* Orbiting dot */}
+          <div style={{ position: "absolute", inset: -6, borderRadius: "50%", border: `2px solid transparent`, borderTopColor: THEME.gold, animation: "spin .9s linear infinite" }} />
+        </div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: THEME.textMain, letterSpacing: "-0.5px", marginBottom: 8, fontFamily: "'Outfit', sans-serif" }}>
+          Opening your CV
+        </h2>
+        <p style={{ fontSize: 14, color: THEME.textMuted, marginBottom: 28, lineHeight: 1.6 }}>
+          Parsing your document and setting up the editor…
+        </p>
+        {/* Steps */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 260, margin: "0 auto", textAlign: "left" }}>
+          {[
+            { label: "Reading document structure", done: true },
+            { label: "Mapping fields to editor", done: true },
+            { label: "Preparing live preview", done: false },
+          ].map((step, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 20, height: 20, borderRadius: "50%", background: step.done ? THEME.gold : "transparent", border: step.done ? "none" : `2px solid ${THEME.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .3s" }}>
+                {step.done
+                  ? <Check size={11} color={THEME.primary} strokeWidth={3} />
+                  : <div style={{ width: 6, height: 6, borderRadius: "50%", border: `2px solid ${THEME.gold}`, borderTopColor: "transparent", animation: "spin .7s linear infinite" }} />}
+              </div>
+              <span style={{ fontSize: 13, color: step.done ? THEME.textMain : THEME.textMuted, fontWeight: step.done ? 500 : 400 }}>{step.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1485,225 +1592,270 @@ function BuilderInner() {
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
-        {/* ── EDITOR PANEL ── */}
-        <div style={{ width: isMobile ? "100%" : (showPreview ? 500 : "100%"), maxWidth: isMobile ? "100%" : 800, margin: (!isMobile && !showPreview) ? "0 auto" : 0, background: THEME.surface, borderRight: `1px solid ${THEME.border}`, display: isMobile && showPreview ? "none" : "flex", flexDirection: "column", overflowY: "auto", boxShadow: (!isMobile && !showPreview) ? "0 0 20px rgba(0,0,0,0.05)" : "none", paddingBottom: isMobile ? 52 : 0 }}>
-          
-          {/* Horizontal Tabs */}
-          <div style={{ display: "flex", borderBottom: `1px solid ${THEME.border}`, padding: "0 24px", overflowX: "auto", flexShrink: 0, background: THEME.surface }}>
-            {TABS.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                style={{ display: "flex", alignItems: "center", gap: 7, padding: "16px 4px", marginRight: 24, fontSize: 12, fontWeight: 700, border: "none", borderBottom: tab === t.id ? `2px solid ${THEME.gold}` : "2px solid transparent", background: "transparent", color: tab === t.id ? THEME.primary : THEME.textMuted, cursor: "pointer", whiteSpace: "nowrap", marginBottom: -1, textTransform: "uppercase", letterSpacing: "0.6px", transition: "color 0.15s", fontFamily: "'IBM Plex Mono', monospace" }}>
-                <t.icon size={15} /> {t.label}
-              </button>
-            ))}
-          </div>
+        {/* ── EDITOR PANEL (accordion cards, 50% width) ── */}
+        <div style={{ width: isMobile ? "100%" : "50%", background: THEME.surface, borderRight: `1px solid ${THEME.border}`, display: isMobile && showPreview ? "none" : "flex", flexDirection: "column", overflowY: "auto", paddingBottom: isMobile ? 52 : 0 }}>
 
-          <div style={{ padding: "32px 24px", flex: 1 }}>
+          <div style={{ padding: "14px 14px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
 
-            {/* ── PERSONAL ── */}
-            {tab === "Personal" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 20 }}>
-                  <div><label style={labelStyle}>Full Name</label><input style={inputStyle} value={cv.personal.name} onChange={e => upP("name", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
-                  <div><label style={labelStyle}>Email Address</label><input style={inputStyle} type="email" value={cv.personal.email} onChange={e => upP("email", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
-                  <div><label style={labelStyle}>Phone Number</label><input style={inputStyle} value={cv.personal.phone} onChange={e => upP("phone", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
-                  <div><label style={labelStyle}>Location (City, Country)</label><input style={inputStyle} value={cv.personal.location} onChange={e => upP("location", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
-                  <div><label style={labelStyle}>LinkedIn Profile</label><input style={inputStyle} value={cv.personal.linkedin} onChange={e => upP("linkedin", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
-                  <div><label style={labelStyle}>GitHub / PortFitRezume</label><input style={inputStyle} value={cv.personal.github} onChange={e => upP("github", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
-                </div>
-                <div><label style={labelStyle}>Personal Website</label><input style={inputStyle} value={cv.personal.website} onChange={e => upP("website", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <label style={{ ...labelStyle, margin: 0 }}>Professional Summary</label>
-                    <AITrigger id="summary" label="Auto-Write" />
-                  </div>
-                  <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 120 }} value={cv.personal.summary} onChange={e => upP("summary", e.target.value)} onFocus={onFocus} onBlur={onBlur} />
-                  {aiOpen === "summary" && <AIBox context="summary" cv={cv} setCV={setCV} onClose={() => setAiOpen(null)} />}
-                </div>
-              </div>
-            )}
-
-            {/* ── EXPERIENCE ── */}
-            {tab === "Experience" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                {cv.experience.map((exp, ei) => (
-                  <div key={exp.id}
-                    draggable
-                    onDragStart={() => { dragExpIdx.current = ei; }}
-                    onDragEnter={() => { dragExpOverIdx.current = ei; }}
-                    onDragEnd={() => {
-                      const from = dragExpIdx.current; const to = dragExpOverIdx.current;
-                      if (from >= 0 && to >= 0 && from !== to) setCV(c => { const arr = [...c.experience]; const [item] = arr.splice(from, 1); arr.splice(to, 0, item); return { ...c, experience: arr }; });
-                      dragExpIdx.current = -1; dragExpOverIdx.current = -1;
-                    }}
-                    onDragOver={e => e.preventDefault()}
-                    style={{ borderRadius: "4px", border: `1px solid ${THEME.border}`, background: THEME.surface, cursor: "grab" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", borderBottom: collapsed[exp.id] ? "none" : `1px solid ${THEME.border}`, background: THEME.background }}>
-                      <p style={{ fontSize: 14, fontWeight: 700, color: THEME.textMain }}>
-                        {exp.role || `Experience #${ei + 1}`}
-                        {exp.company && <span style={{ fontSize: 13, color: THEME.textMuted, fontWeight: 500, marginLeft: 8 }}>@ {exp.company}</span>}
-                      </p>
-                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <GripVertical size={16} color={THEME.textMuted} style={{ cursor: "grab" }} />
-                        <button onClick={() => toggleCollapse(exp.id)} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.textMuted }}>{collapsed[exp.id] ? <ChevronDown size={18} /> : <ChevronUp size={18} />}</button>
-                        <button onClick={() => setCV(c => ({ ...c, experience: c.experience.filter(e => e.id !== exp.id) }))} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.danger }}><Trash2 size={18} /></button>
+            {/* ── PERSONAL INFO CARD ── */}
+            {(() => {
+              const open = !collapsed["__personal"];
+              return (
+                <div style={{ borderRadius: 8, border: `1px solid ${THEME.border}`, background: "#fff", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
+                  <button onClick={() => toggleCollapse("__personal")} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: open ? THEME.darkBg : THEME.background, border: "none", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 4, height: 16, borderRadius: 2, background: "#2563EB" }} />
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: open ? "#fff" : THEME.textMain, letterSpacing: "0.3px", fontFamily: "'IBM Plex Mono', monospace", textTransform: "uppercase" }}>Personal Info</span>
+                    </div>
+                    {open ? <ChevronUp size={15} color={open ? "#94A3B8" : THEME.textMuted} /> : <ChevronDown size={15} color={THEME.textMuted} />}
+                  </button>
+                  {open && (
+                    <div style={{ padding: "18px", display: "flex", flexDirection: "column", gap: 16 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                        <div><label style={labelStyle}>Full Name</label><input style={inputStyle} value={cv.personal.name} onChange={e => upP("name", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
+                        <div><label style={labelStyle}>Email</label><input style={inputStyle} type="email" value={cv.personal.email} onChange={e => upP("email", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
+                        <div><label style={labelStyle}>Phone</label><input style={inputStyle} value={cv.personal.phone} onChange={e => upP("phone", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
+                        <div><label style={labelStyle}>Location</label><input style={inputStyle} value={cv.personal.location} onChange={e => upP("location", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
+                        <div><label style={labelStyle}>LinkedIn</label><input style={inputStyle} value={cv.personal.linkedin} onChange={e => upP("linkedin", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
+                        <div><label style={labelStyle}>GitHub</label><input style={inputStyle} value={cv.personal.github} onChange={e => upP("github", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
+                        <div style={{ gridColumn: "1/-1" }}><label style={labelStyle}>Website</label><input style={inputStyle} value={cv.personal.website} onChange={e => upP("website", e.target.value)} onFocus={onFocus} onBlur={onBlur} /></div>
+                      </div>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                          <label style={{ ...labelStyle, margin: 0 }}>Professional Summary</label>
+                          <AITrigger id="summary" label="Auto-Write" />
+                        </div>
+                        <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 100 }} value={cv.personal.summary} onChange={e => upP("summary", e.target.value)} onFocus={onFocus} onBlur={onBlur} />
+                        {aiOpen === "summary" && <AIBox context="summary" cv={cv} setCV={setCV} onClose={() => setAiOpen(null)} onUsed={() => { markAIUsed("summary"); }} alreadyUsed={usedAI.has("summary")} />}
                       </div>
                     </div>
-                    {!collapsed[exp.id] && (
-                      <div style={{ padding: "20px" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                          {(["role", "company", "period", "location"] as const).map(f => (
-                            <div key={f}><label style={labelStyle}>{f}</label><input style={inputStyle} value={exp[f] || ""} onChange={e => setCV(c => ({ ...c, experience: c.experience.map(ex => ex.id === exp.id ? { ...ex, [f]: e.target.value } : ex) }))} onFocus={onFocus} onBlur={onBlur} /></div>
-                          ))}
-                        </div>
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                            <label style={{ ...labelStyle, margin: 0 }}>Key Responsibilities & Achievements</label>
-                            <AITrigger id={`exp-${exp.id}`} label="Enhance Bullets" />
-                          </div>
-                          {exp.bullets.map((b, bi) => (
-                            <div key={bi} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                              <input style={{ ...inputStyle, flex: 1 }} value={b} onChange={e => { const val = e.target.value; setCV(c => ({ ...c, experience: c.experience.map(ex => ex.id === exp.id ? { ...ex, bullets: ex.bullets.map((x, j) => j === bi ? val : x) } : ex) })); }} onFocus={onFocus} onBlur={onBlur} />
-                              {exp.bullets.length > 1 && <button onClick={() => setCV(c => ({ ...c, experience: c.experience.map(e => e.id === exp.id ? { ...e, bullets: e.bullets.filter((_, j) => j !== bi) } : e) }))} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.textMuted }}><X size={18} /></button>}
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── EXPERIENCE CARD ── */}
+            {(() => {
+              const open = !collapsed["__experience"];
+              return (
+                <div style={{ borderRadius: 8, border: `1px solid ${THEME.border}`, background: "#fff", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
+                  <button onClick={() => toggleCollapse("__experience")} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: open ? THEME.darkBg : THEME.background, border: "none", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 4, height: 16, borderRadius: 2, background: "#10B981" }} />
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: open ? "#fff" : THEME.textMain, fontFamily: "'IBM Plex Mono', monospace", textTransform: "uppercase" }}>Experience</span>
+                    </div>
+                    {open ? <ChevronUp size={15} color={open ? "#94A3B8" : THEME.textMuted} /> : <ChevronDown size={15} color={THEME.textMuted} />}
+                  </button>
+                  {open && (
+                    <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                      {cv.experience.map((exp, ei) => (
+                        <div key={exp.id} draggable onDragStart={() => { dragExpIdx.current = ei; }} onDragEnter={() => { dragExpOverIdx.current = ei; }} onDragEnd={() => { const from = dragExpIdx.current; const to = dragExpOverIdx.current; if (from >= 0 && to >= 0 && from !== to) setCV(c => { const arr = [...c.experience]; const [item] = arr.splice(from, 1); arr.splice(to, 0, item); return { ...c, experience: arr }; }); dragExpIdx.current = -1; dragExpOverIdx.current = -1; }} onDragOver={e => e.preventDefault()} style={{ borderRadius: 6, border: `1px solid ${THEME.border}`, background: THEME.surface }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: THEME.background, borderBottom: collapsed[exp.id] ? "none" : `1px solid ${THEME.border}`, borderRadius: collapsed[exp.id] ? 6 : "6px 6px 0 0" }}>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: THEME.textMain }}>
+                              {exp.role || `Experience #${ei + 1}`}{exp.company && <span style={{ fontWeight: 400, color: THEME.textMuted, marginLeft: 6 }}>@ {exp.company}</span>}
+                            </p>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                              <GripVertical size={14} color={THEME.textMuted} style={{ cursor: "grab" }} />
+                              <button onClick={() => toggleCollapse(exp.id)} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.textMuted, padding: 2 }}>{collapsed[exp.id] ? <ChevronDown size={15} /> : <ChevronUp size={15} />}</button>
+                              <button onClick={() => setCV(c => ({ ...c, experience: c.experience.filter(e => e.id !== exp.id) }))} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.danger, padding: 2 }}><Trash2 size={15} /></button>
                             </div>
-                          ))}
-                          <button onClick={() => setCV(c => ({ ...c, experience: c.experience.map(e => e.id === exp.id ? { ...e, bullets: [...e.bullets, ""] } : e) }))} style={{ fontSize: 13, color: THEME.primary, background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6, fontWeight: 600, marginTop: 12 }}><Plus size={16} /> Add new bullet</button>
-                        </div>
-                        {aiOpen === `exp-${exp.id}` && <AIBox context="experience-bullets" targetId={exp.id} cv={cv} setCV={setCV} onClose={() => setAiOpen(null)} />}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <button onClick={() => setCV(c => ({ ...c, experience: [...c.experience, { id: `e${Date.now()}`, company: "", role: "", period: "", location: "", bullets: [""] }] }))} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px", borderRadius: "4px", border: `2px dashed ${THEME.border}`, color: THEME.textMuted, background: "transparent", cursor: "pointer", fontWeight: 600, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.5px" }}><Plus size={16} /> Add Experience Block</button>
-              </div>
-            )}
-
-            {/* ── EDUCATION ── */}
-            {tab === "Education" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                {cv.education.map(edu => (
-                  <div key={edu.id}
-                    draggable
-                    onDragStart={() => { dragEduIdx.current = cv.education.indexOf(edu); }}
-                    onDragEnter={() => { dragEduOverIdx.current = cv.education.indexOf(edu); }}
-                    onDragEnd={() => {
-                      const from = dragEduIdx.current; const to = dragEduOverIdx.current;
-                      if (from >= 0 && to >= 0 && from !== to) setCV(c => { const arr = [...c.education]; const [item] = arr.splice(from, 1); arr.splice(to, 0, item); return { ...c, education: arr }; });
-                      dragEduIdx.current = -1; dragEduOverIdx.current = -1;
-                    }}
-                    onDragOver={e => e.preventDefault()}
-                    style={{ borderRadius: "4px", border: `1px solid ${THEME.border}`, cursor: "grab" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", background: THEME.background, borderBottom: collapsed[edu.id] ? "none" : `1px solid ${THEME.border}` }}>
-                      <p style={{ fontSize: 14, fontWeight: 700, color: THEME.textMain }}>{edu.degree || "Degree Title"}{edu.school && <span style={{ fontSize: 13, color: THEME.textMuted, fontWeight: 500, marginLeft: 8 }}>@ {edu.school}</span>}</p>
-                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <GripVertical size={16} color={THEME.textMuted} style={{ cursor: "grab" }} />
-                        <button onClick={() => toggleCollapse(edu.id)} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.textMuted }}>{collapsed[edu.id] ? <ChevronDown size={18} /> : <ChevronUp size={18} />}</button>
-                        <button onClick={() => setCV(c => ({ ...c, education: c.education.filter(e => e.id !== edu.id) }))} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.danger }}><Trash2 size={18} /></button>
-                      </div>
-                    </div>
-                    {!collapsed[edu.id] && (
-                      <div style={{ padding: "20px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
-                        {(["degree", "field", "school", "period", "gpa", "honors"] as const).map(f => (
-                          <div key={f}><label style={labelStyle}>{f}</label><input style={inputStyle} value={edu[f] || ""} onChange={e => setCV(c => ({ ...c, education: c.education.map(ed => ed.id === edu.id ? { ...ed, [f]: e.target.value } : ed) }))} onFocus={onFocus} onBlur={onBlur} /></div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <button onClick={() => setCV(c => ({ ...c, education: [...c.education, { id: `ed${Date.now()}`, school: "", degree: "", field: "", period: "", gpa: "", honors: "" }] }))} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px", borderRadius: "4px", border: `2px dashed ${THEME.border}`, color: THEME.textMuted, background: "transparent", cursor: "pointer", fontWeight: 600, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.5px" }}><Plus size={16} /> Add Education Block</button>
-              </div>
-            )}
-
-            {/* ── SKILLS ── */}
-            {tab === "Skills" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <div style={{ borderRadius: "4px", border: `1px solid ${THEME.border}` }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", background: THEME.background, borderBottom: `1px solid ${THEME.border}` }}>
-                    <label style={{ ...labelStyle, margin: 0 }}>Technical Skills</label>
-                    <AITrigger id="skills" label="Recommend Skills" />
-                  </div>
-                  <div style={{ padding: "20px" }}>
-                    <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 100 }} value={cv.skills.technical} onChange={e => setCV(c => ({ ...c, skills: { ...c.skills, technical: e.target.value } }))} placeholder="React, Node.js, Python, AWS (Comma separated)" onFocus={onFocus} onBlur={onBlur} />
-                  </div>
-                  {aiOpen === "skills" && <div style={{ borderTop: `1px solid ${THEME.border}`, padding: "0 20px 20px" }}><AIBox context="skills" cv={cv} setCV={setCV} onClose={() => setAiOpen(null)} /></div>}
-                </div>
-                {([["soft", "Soft Skills", "Leadership, Agile, Communication"], ["languages", "Languages", "English (Native), Spanish (C1)"], ["certifications", "Certifications", "AWS Certified Developer, Scrum Master"]] as const).map(([f, label, ph]) => (
-                  <div key={f}><label style={labelStyle}>{label}</label><textarea style={{ ...inputStyle, resize: "vertical", minHeight: 80 }} value={cv.skills[f as keyof typeof cv.skills]} onChange={e => setCV(c => ({ ...c, skills: { ...c.skills, [f]: e.target.value } }))} placeholder={ph} onFocus={onFocus} onBlur={onBlur} /></div>
-                ))}
-              </div>
-            )}
-
-            {/* ── PROJECTS ── */}
-            {tab === "Projects" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                {cv.projects.map(p => (
-                  <div key={p.id}
-                    draggable
-                    onDragStart={() => { dragProjIdx.current = cv.projects.indexOf(p); }}
-                    onDragEnter={() => { dragProjOverIdx.current = cv.projects.indexOf(p); }}
-                    onDragEnd={() => {
-                      const from = dragProjIdx.current; const to = dragProjOverIdx.current;
-                      if (from >= 0 && to >= 0 && from !== to) setCV(c => { const arr = [...c.projects]; const [item] = arr.splice(from, 1); arr.splice(to, 0, item); return { ...c, projects: arr }; });
-                      dragProjIdx.current = -1; dragProjOverIdx.current = -1;
-                    }}
-                    onDragOver={e => e.preventDefault()}
-                    style={{ borderRadius: "4px", border: `1px solid ${THEME.border}`, cursor: "grab" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", background: THEME.background, borderBottom: collapsed[p.id] ? "none" : `1px solid ${THEME.border}` }}>
-                      <p style={{ fontSize: 14, fontWeight: 700, color: THEME.textMain }}>{p.name || "Project Title"}{p.tech && <span style={{ fontSize: 13, color: THEME.textMuted, fontWeight: 500, marginLeft: 8 }}>| {p.tech}</span>}</p>
-                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <GripVertical size={16} color={THEME.textMuted} style={{ cursor: "grab" }} />
-                        <button onClick={() => toggleCollapse(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.textMuted }}>{collapsed[p.id] ? <ChevronDown size={18} /> : <ChevronUp size={18} />}</button>
-                        <button onClick={() => setCV(c => ({ ...c, projects: c.projects.filter(pr => pr.id !== p.id) }))} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.danger }}><Trash2 size={18} /></button>
-                      </div>
-                    </div>
-                    {!collapsed[p.id] && (
-                      <div style={{ padding: "20px" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                          {(["name", "tech"] as const).map(f => (
-                            <div key={f}><label style={labelStyle}>{f}</label><input style={inputStyle} value={p[f]} onChange={e => setCV(c => ({ ...c, projects: c.projects.map(pr => pr.id === p.id ? { ...pr, [f]: e.target.value } : pr) }))} onFocus={onFocus} onBlur={onBlur} /></div>
-                          ))}
-                        </div>
-                        <div style={{ marginBottom: 16 }}><label style={labelStyle}>Live URL / Repository</label><input style={inputStyle} value={p.url} onChange={e => setCV(c => ({ ...c, projects: c.projects.map(pr => pr.id === p.id ? { ...pr, url: e.target.value } : pr) }))} onFocus={onFocus} onBlur={onBlur} /></div>
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                            <label style={{ ...labelStyle, margin: 0 }}>Project Description</label>
-                            <AITrigger id={`proj-${p.id}`} label="Enhance Description" />
                           </div>
-                          <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 100 }} value={p.description} onChange={e => setCV(c => ({ ...c, projects: c.projects.map(pr => pr.id === p.id ? { ...pr, description: e.target.value } : pr) }))} onFocus={onFocus} onBlur={onBlur} />
+                          {!collapsed[exp.id] && (
+                            <div style={{ padding: "14px" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                                {(["role", "company", "period", "location"] as const).map(f => (<div key={f}><label style={labelStyle}>{f}</label><input style={inputStyle} value={exp[f] || ""} onChange={e => setCV(c => ({ ...c, experience: c.experience.map(ex => ex.id === exp.id ? { ...ex, [f]: e.target.value } : ex) }))} onFocus={onFocus} onBlur={onBlur} /></div>))}
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                                <label style={{ ...labelStyle, margin: 0 }}>Responsibilities</label>
+                                <AITrigger id={`exp-${exp.id}`} label="Enhance" />
+                              </div>
+                              {exp.bullets.map((b, bi) => (
+                                <div key={bi} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                                  <input style={{ ...inputStyle, flex: 1 }} value={b} onChange={e => { const val = e.target.value; setCV(c => ({ ...c, experience: c.experience.map(ex => ex.id === exp.id ? { ...ex, bullets: ex.bullets.map((x, j) => j === bi ? val : x) } : ex) })); }} onFocus={onFocus} onBlur={onBlur} />
+                                  {exp.bullets.length > 1 && <button onClick={() => setCV(c => ({ ...c, experience: c.experience.map(e => e.id === exp.id ? { ...e, bullets: e.bullets.filter((_, j) => j !== bi) } : e) }))} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.textMuted, padding: 2 }}><X size={16} /></button>}
+                                </div>
+                              ))}
+                              <button onClick={() => setCV(c => ({ ...c, experience: c.experience.map(e => e.id === exp.id ? { ...e, bullets: [...e.bullets, ""] } : e) }))} style={{ fontSize: 12, color: THEME.primary, background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 5, fontWeight: 600, marginTop: 6 }}><Plus size={14} /> Add bullet</button>
+                              {aiOpen === `exp-${exp.id}` && <AIBox context="experience-bullets" targetId={exp.id} cv={cv} setCV={setCV} onClose={() => setAiOpen(null)} onUsed={() => { markAIUsed(`exp-${exp.id}`); }} alreadyUsed={usedAI.has(`exp-${exp.id}`)} />}
+                            </div>
+                          )}
                         </div>
-                        {aiOpen === `proj-${p.id}` && <AIBox context="projects-description" targetId={p.id} cv={cv} setCV={setCV} onClose={() => setAiOpen(null)} />}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <button onClick={() => setCV(c => ({ ...c, projects: [...c.projects, { id: `p${Date.now()}`, name: "", tech: "", url: "", description: "" }] }))} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px", borderRadius: "4px", border: `2px dashed ${THEME.border}`, color: THEME.textMuted, background: "transparent", cursor: "pointer", fontWeight: 600, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.5px" }}><Plus size={16} /> Add Project Block</button>
-              </div>
-            )}
+                      ))}
+                      <button onClick={() => setCV(c => ({ ...c, experience: [...c.experience, { id: `e${Date.now()}`, company: "", role: "", period: "", location: "", bullets: [""] }] }))} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 6, border: `2px dashed ${THEME.border}`, color: THEME.textMuted, background: "transparent", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>+ Add Experience</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
-            {/* ── ACHIEVEMENTS ── */}
-            {tab === "Achievements" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <p style={{ fontSize: 13, color: THEME.textMuted, marginBottom: 8 }}>Add awards, publications, volunteer work, or other notable milestones.</p>
-                {cv.achievements.map((a, i) => (
-                  <div key={a.id}
-                    draggable
-                    onDragStart={() => { dragAchIdx.current = i; }}
-                    onDragEnter={() => { dragAchOverIdx.current = i; }}
-                    onDragEnd={() => {
-                      const from = dragAchIdx.current; const to = dragAchOverIdx.current;
-                      if (from >= 0 && to >= 0 && from !== to) setCV(c => { const arr = [...c.achievements]; const [item] = arr.splice(from, 1); arr.splice(to, 0, item); return { ...c, achievements: arr }; });
-                      dragAchIdx.current = -1; dragAchOverIdx.current = -1;
-                    }}
-                    onDragOver={e => e.preventDefault()}
-                    style={{ display: "flex", gap: 12, alignItems: "center", cursor: "grab" }}>
-                    <GripVertical size={16} color={THEME.textMuted} style={{ flexShrink: 0 }} />
-                    <input style={{ ...inputStyle, flex: 1 }} value={a.text} onChange={e => setCV(c => ({ ...c, achievements: c.achievements.map((x, j) => j === i ? { ...x, text: e.target.value } : x) }))} onFocus={onFocus} onBlur={onBlur} />
-                    <button onClick={() => setCV(c => ({ ...c, achievements: c.achievements.filter((_, j) => j !== i) }))} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.danger }}><Trash2 size={20} /></button>
-                  </div>
-                ))}
-                <button onClick={() => setCV(c => ({ ...c, achievements: [...c.achievements, { id: `a${Date.now()}`, text: "" }] }))} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px", borderRadius: "4px", border: `2px dashed ${THEME.border}`, color: THEME.textMuted, background: "transparent", cursor: "pointer", fontWeight: 600, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.5px" }}><Plus size={16} /> Add Item</button>
-              </div>
-            )}
+            {/* ── EDUCATION CARD ── */}
+            {(() => {
+              const open = !collapsed["__education"];
+              return (
+                <div style={{ borderRadius: 8, border: `1px solid ${THEME.border}`, background: "#fff", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
+                  <button onClick={() => toggleCollapse("__education")} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: open ? THEME.darkBg : THEME.background, border: "none", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 4, height: 16, borderRadius: 2, background: "#F59E0B" }} />
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: open ? "#fff" : THEME.textMain, fontFamily: "'IBM Plex Mono', monospace", textTransform: "uppercase" }}>Education</span>
+                    </div>
+                    {open ? <ChevronUp size={15} color={open ? "#94A3B8" : THEME.textMuted} /> : <ChevronDown size={15} color={THEME.textMuted} />}
+                  </button>
+                  {open && (
+                    <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                      {cv.education.map(edu => (
+                        <div key={edu.id} draggable onDragStart={() => { dragEduIdx.current = cv.education.indexOf(edu); }} onDragEnter={() => { dragEduOverIdx.current = cv.education.indexOf(edu); }} onDragEnd={() => { const from = dragEduIdx.current; const to = dragEduOverIdx.current; if (from >= 0 && to >= 0 && from !== to) setCV(c => { const arr = [...c.education]; const [item] = arr.splice(from, 1); arr.splice(to, 0, item); return { ...c, education: arr }; }); dragEduIdx.current = -1; dragEduOverIdx.current = -1; }} onDragOver={e => e.preventDefault()} style={{ borderRadius: 6, border: `1px solid ${THEME.border}` }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: THEME.background, borderBottom: collapsed[edu.id] ? "none" : `1px solid ${THEME.border}`, borderRadius: collapsed[edu.id] ? 6 : "6px 6px 0 0" }}>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: THEME.textMain }}>{edu.degree || "Degree"}{edu.school && <span style={{ fontWeight: 400, color: THEME.textMuted, marginLeft: 6 }}>@ {edu.school}</span>}</p>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                              <GripVertical size={14} color={THEME.textMuted} style={{ cursor: "grab" }} />
+                              <button onClick={() => toggleCollapse(edu.id)} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.textMuted, padding: 2 }}>{collapsed[edu.id] ? <ChevronDown size={15} /> : <ChevronUp size={15} />}</button>
+                              <button onClick={() => setCV(c => ({ ...c, education: c.education.filter(e => e.id !== edu.id) }))} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.danger, padding: 2 }}><Trash2 size={15} /></button>
+                            </div>
+                          </div>
+                          {!collapsed[edu.id] && (
+                            <div style={{ padding: "14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                              {(["degree", "field", "school", "period", "gpa", "honors"] as const).map(f => (<div key={f}><label style={labelStyle}>{f}</label><input style={inputStyle} value={edu[f] || ""} onChange={e => setCV(c => ({ ...c, education: c.education.map(ed => ed.id === edu.id ? { ...ed, [f]: e.target.value } : ed) }))} onFocus={onFocus} onBlur={onBlur} /></div>))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <button onClick={() => setCV(c => ({ ...c, education: [...c.education, { id: `ed${Date.now()}`, school: "", degree: "", field: "", period: "", gpa: "", honors: "" }] }))} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 6, border: `2px dashed ${THEME.border}`, color: THEME.textMuted, background: "transparent", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>+ Add Education</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── SKILLS CARD ── */}
+            {(() => {
+              const open = !collapsed["__skills"];
+              return (
+                <div style={{ borderRadius: 8, border: `1px solid ${THEME.border}`, background: "#fff", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
+                  <button onClick={() => toggleCollapse("__skills")} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: open ? THEME.darkBg : THEME.background, border: "none", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 4, height: 16, borderRadius: 2, background: "#8B5CF6" }} />
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: open ? "#fff" : THEME.textMain, fontFamily: "'IBM Plex Mono', monospace", textTransform: "uppercase" }}>Skills</span>
+                    </div>
+                    {open ? <ChevronUp size={15} color={open ? "#94A3B8" : THEME.textMuted} /> : <ChevronDown size={15} color={THEME.textMuted} />}
+                  </button>
+                  {open && (
+                    <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ borderRadius: 6, border: `1px solid ${THEME.border}` }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: THEME.background, borderBottom: `1px solid ${THEME.border}` }}>
+                          <label style={{ ...labelStyle, margin: 0, fontSize: 12 }}>Technical Skills</label>
+                          <AITrigger id="skills" label="Suggest" />
+                        </div>
+                        <div style={{ padding: "12px 14px" }}>
+                          <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 80 }} value={cv.skills.technical} onChange={e => setCV(c => ({ ...c, skills: { ...c.skills, technical: e.target.value } }))} placeholder="React, Node.js, Python, AWS" onFocus={onFocus} onBlur={onBlur} />
+                        </div>
+                        {aiOpen === "skills" && <div style={{ borderTop: `1px solid ${THEME.border}`, padding: "0 14px 14px" }}><AIBox context="skills" cv={cv} setCV={setCV} onClose={() => setAiOpen(null)} onUsed={() => { markAIUsed("skills"); }} alreadyUsed={usedAI.has("skills")} /></div>}
+                      </div>
+                      {template === "Sidebar" && cv.skills.technical.trim() && (
+                        <div style={{ borderRadius: 6, border: `1px solid ${THEME.border}`, overflow: "hidden" }}>
+                          <div style={{ padding: "8px 14px", background: THEME.background, borderBottom: `1px solid ${THEME.border}` }}>
+                            <label style={{ ...labelStyle, margin: 0, fontSize: 11 }}>Skill Levels (stars shown in preview)</label>
+                          </div>
+                          <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                            {cv.skills.technical.split(",").map(s => s.trim()).filter(Boolean).map(skill => (
+                              <div key={skill} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <span style={{ fontSize: 12, color: THEME.textMain, fontWeight: 500 }}>{skill}</span>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  {[1, 2, 3, 4, 5].map(star => (
+                                    <button key={star} onClick={() => setCV(c => ({ ...c, skillLevels: { ...c.skillLevels, [skill]: star } }))}
+                                      style={{ background: "none", border: "none", cursor: "pointer", padding: 2, fontSize: 16, color: star <= (cv.skillLevels?.[skill] ?? 4) ? "#8B5CF6" : "#D1D5DB" }}>★</button>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {([["soft", "Soft Skills", "Leadership, Agile, Communication"], ["languages", "Languages", "English (Native), Hindi"], ["certifications", "Certifications", "AWS Developer, Scrum Master"]] as const).map(([f, label, ph]) => (
+                        <div key={f}><label style={labelStyle}>{label}</label><textarea style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} value={cv.skills[f as keyof typeof cv.skills]} onChange={e => setCV(c => ({ ...c, skills: { ...c.skills, [f]: e.target.value } }))} placeholder={ph} onFocus={onFocus} onBlur={onBlur} /></div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── PROJECTS CARD ── */}
+            {(() => {
+              const open = !collapsed["__projects"];
+              return (
+                <div style={{ borderRadius: 8, border: `1px solid ${THEME.border}`, background: "#fff", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
+                  <button onClick={() => toggleCollapse("__projects")} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: open ? THEME.darkBg : THEME.background, border: "none", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 4, height: 16, borderRadius: 2, background: "#EC4899" }} />
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: open ? "#fff" : THEME.textMain, fontFamily: "'IBM Plex Mono', monospace", textTransform: "uppercase" }}>Projects</span>
+                    </div>
+                    {open ? <ChevronUp size={15} color={open ? "#94A3B8" : THEME.textMuted} /> : <ChevronDown size={15} color={THEME.textMuted} />}
+                  </button>
+                  {open && (
+                    <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                      {cv.projects.map(p => (
+                        <div key={p.id} draggable onDragStart={() => { dragProjIdx.current = cv.projects.indexOf(p); }} onDragEnter={() => { dragProjOverIdx.current = cv.projects.indexOf(p); }} onDragEnd={() => { const from = dragProjIdx.current; const to = dragProjOverIdx.current; if (from >= 0 && to >= 0 && from !== to) setCV(c => { const arr = [...c.projects]; const [item] = arr.splice(from, 1); arr.splice(to, 0, item); return { ...c, projects: arr }; }); dragProjIdx.current = -1; dragProjOverIdx.current = -1; }} onDragOver={e => e.preventDefault()} style={{ borderRadius: 6, border: `1px solid ${THEME.border}` }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: THEME.background, borderBottom: collapsed[p.id] ? "none" : `1px solid ${THEME.border}`, borderRadius: collapsed[p.id] ? 6 : "6px 6px 0 0" }}>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: THEME.textMain }}>{p.name || "Project"}{p.tech && <span style={{ fontWeight: 400, color: THEME.textMuted, marginLeft: 6 }}>| {p.tech}</span>}</p>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                              <GripVertical size={14} color={THEME.textMuted} style={{ cursor: "grab" }} />
+                              <button onClick={() => toggleCollapse(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.textMuted, padding: 2 }}>{collapsed[p.id] ? <ChevronDown size={15} /> : <ChevronUp size={15} />}</button>
+                              <button onClick={() => setCV(c => ({ ...c, projects: c.projects.filter(pr => pr.id !== p.id) }))} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.danger, padding: 2 }}><Trash2 size={15} /></button>
+                            </div>
+                          </div>
+                          {!collapsed[p.id] && (
+                            <div style={{ padding: "14px" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                                {(["name", "tech"] as const).map(f => (<div key={f}><label style={labelStyle}>{f}</label><input style={inputStyle} value={p[f]} onChange={e => setCV(c => ({ ...c, projects: c.projects.map(pr => pr.id === p.id ? { ...pr, [f]: e.target.value } : pr) }))} onFocus={onFocus} onBlur={onBlur} /></div>))}
+                              </div>
+                              <div style={{ marginBottom: 12 }}><label style={labelStyle}>URL</label><input style={inputStyle} value={p.url} onChange={e => setCV(c => ({ ...c, projects: c.projects.map(pr => pr.id === p.id ? { ...pr, url: e.target.value } : pr) }))} onFocus={onFocus} onBlur={onBlur} /></div>
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                                  <label style={{ ...labelStyle, margin: 0 }}>Description</label>
+                                  <AITrigger id={`proj-${p.id}`} label="Enhance" />
+                                </div>
+                                <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 80 }} value={p.description} onChange={e => setCV(c => ({ ...c, projects: c.projects.map(pr => pr.id === p.id ? { ...pr, description: e.target.value } : pr) }))} onFocus={onFocus} onBlur={onBlur} />
+                              </div>
+                              {aiOpen === `proj-${p.id}` && <AIBox context="projects-description" targetId={p.id} cv={cv} setCV={setCV} onClose={() => setAiOpen(null)} onUsed={() => { markAIUsed(`proj-${p.id}`); }} alreadyUsed={usedAI.has(`proj-${p.id}`)} />}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <button onClick={() => setCV(c => ({ ...c, projects: [...c.projects, { id: `p${Date.now()}`, name: "", tech: "", url: "", description: "" }] }))} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 6, border: `2px dashed ${THEME.border}`, color: THEME.textMuted, background: "transparent", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>+ Add Project</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── ACHIEVEMENTS CARD ── */}
+            {(() => {
+              const open = !collapsed["__achievements"];
+              return (
+                <div style={{ borderRadius: 8, border: `1px solid ${THEME.border}`, background: "#fff", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
+                  <button onClick={() => toggleCollapse("__achievements")} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: open ? THEME.darkBg : THEME.background, border: "none", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 4, height: 16, borderRadius: 2, background: "#F97316" }} />
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: open ? "#fff" : THEME.textMain, fontFamily: "'IBM Plex Mono', monospace", textTransform: "uppercase" }}>Achievements</span>
+                    </div>
+                    {open ? <ChevronUp size={15} color={open ? "#94A3B8" : THEME.textMuted} /> : <ChevronDown size={15} color={THEME.textMuted} />}
+                  </button>
+                  {open && (
+                    <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                      {cv.achievements.map((a, i) => (
+                        <div key={a.id} draggable onDragStart={() => { dragAchIdx.current = i; }} onDragEnter={() => { dragAchOverIdx.current = i; }} onDragEnd={() => { const from = dragAchIdx.current; const to = dragAchOverIdx.current; if (from >= 0 && to >= 0 && from !== to) setCV(c => { const arr = [...c.achievements]; const [item] = arr.splice(from, 1); arr.splice(to, 0, item); return { ...c, achievements: arr }; }); dragAchIdx.current = -1; dragAchOverIdx.current = -1; }} onDragOver={e => e.preventDefault()} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <GripVertical size={14} color={THEME.textMuted} style={{ flexShrink: 0, cursor: "grab" }} />
+                          <input style={{ ...inputStyle, flex: 1 }} value={a.text} onChange={e => setCV(c => ({ ...c, achievements: c.achievements.map((x, j) => j === i ? { ...x, text: e.target.value } : x) }))} onFocus={onFocus} onBlur={onBlur} />
+                          <button onClick={() => setCV(c => ({ ...c, achievements: c.achievements.filter((_, j) => j !== i) }))} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.danger, padding: 2 }}><Trash2 size={16} /></button>
+                        </div>
+                      ))}
+                      <button onClick={() => setCV(c => ({ ...c, achievements: [...c.achievements, { id: `a${Date.now()}`, text: "" }] }))} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px", borderRadius: 6, border: `2px dashed ${THEME.border}`, color: THEME.textMuted, background: "transparent", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>+ Add Achievement</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
           </div>
         </div>
 
@@ -1714,31 +1866,64 @@ function BuilderInner() {
               <h3 style={{ fontSize: 16, fontWeight: 700, color: THEME.textMain, textTransform: "uppercase", letterSpacing: "0.5px" }}>ATS Analyzer</h3>
               <button onClick={() => setShowATS(false)} style={{ background: "none", border: "none", cursor: "pointer", color: THEME.textMuted }}><X size={18} /></button>
             </div>
-            
-            {/* ATS Score Display */}
-            <div style={{ padding: "28px 24px", textAlign: "center", borderBottom: `1px solid ${THEME.border}` }}>
-              <p style={{ fontSize: 68, fontWeight: 800, lineHeight: 1, color: THEME.primary, letterSpacing: "-3px", marginBottom: 14, fontFamily: "'Playfair Display', serif" }}>75</p>
-              <div style={{ height: 5, background: THEME.border, borderRadius: "3px", overflow: "hidden", marginBottom: 14 }}>
-                <div style={{ height: "100%", width: `75%`, background: `linear-gradient(90deg, ${THEME.primary}, ${THEME.gold})`, borderRadius: "3px" }} />
+
+            {!atsResult && (
+              <div style={{ padding: "28px 24px", textAlign: "center" }}>
+                <p style={{ fontSize: 13, color: THEME.textMuted, marginBottom: 16 }}>Run the ATS check to see how well your CV will pass automated screening.</p>
+                <button onClick={runATS} disabled={atsLoading} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 20px", borderRadius: 6, background: atsLoading ? THEME.textMuted : THEME.primary, color: "#fff", border: "none", cursor: atsLoading ? "default" : "pointer", fontSize: 13, fontWeight: 600 }}>
+                  <BarChart2 size={14} />{atsLoading ? "Analyzing…" : "Run ATS Check"}
+                </button>
               </div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: THEME.textMuted }}>Good foundation — see checklist below.</p>
-            </div>
-            
-            <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
-              {[
-                ["Summary length (>50 words)", true],
-                ["Experience listed", true],
-                ["Measurable metrics used", false],
-                ["Sufficient technical skills", true],
-                ["Education details complete", true],
-                ["LinkedIn profile attached", false]
-              ].map(([label, ok], i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px", borderRadius: "4px", background: ok ? "rgba(25, 135, 84, 0.05)" : "rgba(220, 53, 69, 0.05)", border: `1px solid ${ok ? "rgba(25, 135, 84, 0.2)" : "rgba(220, 53, 69, 0.2)"}` }}>
-                  <div style={{ marginTop: 2 }}>{ok ? <Check size={16} color={THEME.success} /> : <X size={16} color={THEME.danger} />}</div>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: THEME.textMain, lineHeight: 1.4 }}>{label as string}</span>
+            )}
+
+            {atsResult && (
+              <>
+                {/* Score */}
+                <div style={{ padding: "28px 24px", textAlign: "center", borderBottom: `1px solid ${THEME.border}` }}>
+                  <p style={{ fontSize: 68, fontWeight: 800, lineHeight: 1, color: atsResult.score >= 70 ? THEME.success : atsResult.score >= 40 ? "#F59E0B" : THEME.danger, letterSpacing: "-3px", marginBottom: 14 }}>{atsResult.score}</p>
+                  <div style={{ height: 5, background: THEME.border, borderRadius: "3px", overflow: "hidden", marginBottom: 10 }}>
+                    <div style={{ height: "100%", width: `${atsResult.score}%`, background: `linear-gradient(90deg, ${THEME.primary}, ${THEME.gold})`, borderRadius: "3px", transition: "width 0.6s ease" }} />
+                  </div>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: THEME.textMuted }}>{atsResult.score >= 70 ? "Good foundation — keep improving!" : atsResult.score >= 40 ? "Needs improvement — check suggestions." : "Significant gaps — see suggestions."}</p>
+                  <button onClick={runATS} disabled={atsLoading} style={{ marginTop: 10, fontSize: 11, color: THEME.textMuted, background: "none", border: `1px solid ${THEME.border}`, borderRadius: 4, padding: "4px 10px", cursor: "pointer" }}>{atsLoading ? "Re-analyzing…" : "Re-run"}</button>
                 </div>
-              ))}
-            </div>
+
+                <div style={{ overflowY: "auto", padding: "16px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+                  {atsResult.strongPoints.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: THEME.success, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Strong Points</p>
+                      {atsResult.strongPoints.map((pt, i) => (
+                        <div key={i} style={{ display: "flex", gap: 8, padding: "8px 10px", borderRadius: 4, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)", marginBottom: 6 }}>
+                          <Check size={13} color={THEME.success} style={{ flexShrink: 0, marginTop: 2 }} />
+                          <span style={{ fontSize: 12, color: THEME.textMain, lineHeight: 1.45 }}>{pt}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {atsResult.missing_keywords.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: THEME.danger, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Missing Keywords</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {atsResult.missing_keywords.map((kw, i) => (
+                          <span key={i} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.2)", color: THEME.danger }}>{kw}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {atsResult.suggestions.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: THEME.textMuted, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Suggestions</p>
+                      {atsResult.suggestions.map((s, i) => (
+                        <div key={i} style={{ display: "flex", gap: 8, padding: "8px 10px", borderRadius: 4, background: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.15)", marginBottom: 6 }}>
+                          <AlertCircle size={13} color={THEME.gold} style={{ flexShrink: 0, marginTop: 2 }} />
+                          <span style={{ fontSize: 12, color: THEME.textMain, lineHeight: 1.45 }}>{s}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 

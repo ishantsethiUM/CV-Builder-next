@@ -1,13 +1,17 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
-import { login, register } from "@/lib/api";
+import { useState, useRef, useEffect } from "react";
+import { login, register, token } from "@/lib/api";
 import { FileText, Eye, EyeOff, ArrowRight, AlertCircle, Star } from "lucide-react";
 
 export default function AuthPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
+
+  useEffect(() => {
+    if (token.get()) router.replace("/dashboard");
+  }, [router]);
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
