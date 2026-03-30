@@ -88,7 +88,7 @@ function TagInput({ value, onChange, placeholder }: { value: string; onChange: (
   const removeTag = (tag: string) => onChange(tags.filter(t => t !== tag).join(", "));
 
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(draft); }
+    if (e.key === "Enter" || e.key === "," || e.key === "Tab") { e.preventDefault(); addTag(draft); }
     if (e.key === "Backspace" && !draft && tags.length) removeTag(tags[tags.length - 1]);
   };
 
@@ -1593,7 +1593,7 @@ function BuilderInner() {
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
         {/* ── EDITOR PANEL (accordion cards, 50% width) ── */}
-        <div style={{ width: isMobile ? "100%" : "50%", background: THEME.surface, borderRight: `1px solid ${THEME.border}`, display: isMobile && showPreview ? "none" : "flex", flexDirection: "column", overflowY: "auto", paddingBottom: isMobile ? 52 : 0 }}>
+        <div style={{ width: isMobile ? "100%" : 420, flexShrink: 0, background: THEME.surface, borderRight: `1px solid ${THEME.border}`, display: isMobile && showPreview ? "none" : "flex", flexDirection: "column", overflowY: "auto", paddingBottom: isMobile ? 52 : 0, boxShadow: "2px 0 12px rgba(0,0,0,0.06)" }}>
 
           <div style={{ padding: "14px 14px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
 
@@ -1746,7 +1746,8 @@ function BuilderInner() {
                           <AITrigger id="skills" label="Suggest" />
                         </div>
                         <div style={{ padding: "12px 14px" }}>
-                          <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 80 }} value={cv.skills.technical} onChange={e => setCV(c => ({ ...c, skills: { ...c.skills, technical: e.target.value } }))} placeholder="React, Node.js, Python, AWS" onFocus={onFocus} onBlur={onBlur} />
+                          <TagInput value={cv.skills.technical} onChange={v => setCV(c => ({ ...c, skills: { ...c.skills, technical: v } }))} placeholder="Type a skill, press Enter" />
+                          <p style={{ fontSize: 11, color: THEME.textMuted, marginTop: 5 }}>Press Enter or Tab to add each skill</p>
                         </div>
                         {aiOpen === "skills" && <div style={{ borderTop: `1px solid ${THEME.border}`, padding: "0 14px 14px" }}><AIBox context="skills" cv={cv} setCV={setCV} onClose={() => setAiOpen(null)} onUsed={() => { markAIUsed("skills"); }} alreadyUsed={usedAI.has("skills")} /></div>}
                       </div>
@@ -1770,7 +1771,12 @@ function BuilderInner() {
                           </div>
                         </div>
                       )}
-                      {([["soft", "Soft Skills", "Leadership, Agile, Communication"], ["languages", "Languages", "English (Native), Hindi"], ["certifications", "Certifications", "AWS Developer, Scrum Master"]] as const).map(([f, label, ph]) => (
+                      <div>
+                        <label style={labelStyle}>Languages</label>
+                        <TagInput value={cv.skills.languages} onChange={v => setCV(c => ({ ...c, skills: { ...c.skills, languages: v } }))} placeholder="Type a language, press Enter" />
+                        <p style={{ fontSize: 11, color: THEME.textMuted, marginTop: 5 }}>Press Enter or Tab to add each language</p>
+                      </div>
+                      {([["soft", "Soft Skills", "Leadership, Agile, Communication"], ["certifications", "Certifications", "AWS Developer, Scrum Master"]] as const).map(([f, label, ph]) => (
                         <div key={f}><label style={labelStyle}>{label}</label><textarea style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} value={cv.skills[f as keyof typeof cv.skills]} onChange={e => setCV(c => ({ ...c, skills: { ...c.skills, [f]: e.target.value } }))} placeholder={ph} onFocus={onFocus} onBlur={onBlur} /></div>
                       ))}
                     </div>
