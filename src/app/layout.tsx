@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/react";  
 import { CreditsProvider } from "@/contexts/CreditsContext";
 import BuyCreditsModal from "@/components/BuyCreditsModal";
 
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <BuyCreditsModal />
         </CreditsProvider>
+        <Analytics />
       </body>
     </html>
   );

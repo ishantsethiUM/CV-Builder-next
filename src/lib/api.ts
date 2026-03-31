@@ -92,6 +92,7 @@ export async function getMe(): Promise<AuthResponse["user"]> {
 export async function logout(): Promise<void> {
   await request(`${AUTH}/logout`, { method: "POST" }).catch(() => null);
   token.del();
+  localStorage.clear();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
