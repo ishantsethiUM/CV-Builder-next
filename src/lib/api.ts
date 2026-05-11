@@ -299,6 +299,21 @@ export async function getToolHistory(): Promise<ToolHistoryEntry[]> {
   return request<ToolHistoryEntry[]>(`${API}/tools/history`);
 }
 
+export interface JobListing {
+  title: string;
+  company: string;
+  location: string;
+  time: string;
+  link: string;
+}
+
+/** GET /api/tools/jobs */
+export async function getJobs(query: string, location?: string): Promise<{ jobs: JobListing[]; source: string }> {
+  const url = `${API}/tools/jobs?q=${encodeURIComponent(query)}${location ? `&location=${encodeURIComponent(location)}` : ""}`;
+  const data = await request<{ jobs: JobListing[]; source?: string }>(url);
+  return { jobs: data.jobs ?? [], source: data.source ?? "unknown" };
+}
+
 /** Extract text from a CV file via the parse-resume endpoint (no auth needed) */
 export async function extractCvText(file: File): Promise<string> {
   const form = new FormData();

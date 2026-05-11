@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createResume, updateResume, getResume, aiBullets, aiImprove, aiATS } from "@/lib/api";
 import { useCredits } from "@/contexts/CreditsContext";
+import JobsModal from "@/components/JobsModal";
 import {
   FileText, ChevronLeft, Save, Download, Sparkles,
   BarChart2, Plus, Trash2, X, Check, AlertCircle,
-  Eye, EyeOff, ChevronDown, ChevronUp, Layout, GripVertical
+  Eye, EyeOff, ChevronDown, ChevronUp, Layout, GripVertical, Search
 } from "lucide-react";
 
 // Types
@@ -1226,6 +1227,7 @@ function BuilderInner() {
   const router = useRouter();
   const resumeId = searchParams.get("id");
 
+  const [jobSearchQuery, setJobSearchQuery] = useState("");
   const [cv, setCV] = useState<CV>(INIT);
   // tab state removed — sections are now always-visible accordion cards
   const [template, setTemplate] = useState("Minimal");
@@ -1430,6 +1432,13 @@ function BuilderInner() {
       }
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 2500);
+      // Auto-show matching jobs after save
+      const role = cv.experience[0]?.role || "Software Engineer";
+      const topSkill = cv.skills?.technical?.split(",")[0]?.trim();
+      const jobQuery = topSkill && !role.toLowerCase().includes(topSkill.toLowerCase())
+        ? `${role} ${topSkill}`
+        : role;
+      setJobSearchQuery(jobQuery);
     } catch {
       setSaveState("error");
       setTimeout(() => setSaveState("idle"), 3000);
@@ -1587,6 +1596,21 @@ function BuilderInner() {
             title={credits !== null && credits.exportCredits === 0 ? "No export credits — click to buy" : "Download CV"}>
             <Download size={13} /> {isMobile ? "" : (credits !== null && credits.exportCredits === 0 ? "Buy Credits" : "Export PDF")}
           </button>
+
+          {/* Find Jobs */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => {
+                const role = cv.experience[0]?.role || "Software Engineer";
+                const topSkill = cv.skills?.technical?.split(",")[0]?.trim();
+                const q = topSkill && !role.toLowerCase().includes(topSkill.toLowerCase()) ? `${role} ${topSkill}` : role;
+                setJobSearchQuery(q);
+              }}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 4, background: "rgba(255,255,255,.15)", border: "1px solid rgba(255,255,255,.25)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s" }}>
+              <Search size={13} /> {isMobile ? "" : "Find Jobs"}
+            </button>
+            {jobSearchQuery && <JobsModal query={jobSearchQuery} onClose={() => setJobSearchQuery("")} />}
+          </div>
         </div>
       </header>
 

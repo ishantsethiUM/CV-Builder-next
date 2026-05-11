@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { getResumes, deleteResume, uploadResume, logout, token, type ResumeItem } from "@/lib/api";
 import { useCredits } from "@/contexts/CreditsContext";
+import JobsModal from "@/components/JobsModal";
 import {
   FileText, Plus, Download, Edit3, Trash2,
   BarChart2, Sparkles, LogOut,
   Eye, Flame, Brain, Target,
   CheckCircle2, Layers, RefreshCcw, AlertCircle, Clock,
-  Upload, X, ArrowRight, CreditCard
+  Upload, X, ArrowRight, CreditCard, Search, Briefcase
 } from "lucide-react";
 
 const FF = "'Inter', system-ui, -apple-system, sans-serif";
@@ -63,6 +64,7 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
   const [deleting, setDeleting] = useState<string | number | null>(null);
+  const [jobSearchQuery, setJobSearchQuery] = useState("");
   const [hour] = useState(() => new Date().getHours());
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -348,7 +350,21 @@ export default function Dashboard() {
                     )}
 
                     {/* Actions */}
-                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0, position: "relative" }}>
+                      <div style={{ position: "relative" }}>
+                        <button onClick={() => {
+                          const d = r.data as any;
+                          const role = d?.experience?.[0]?.role;
+                          const topSkill = d?.skills?.technical?.split(",")[0]?.trim();
+                          const q = role
+                            ? (topSkill && !role.toLowerCase().includes(topSkill.toLowerCase()) ? `${role} ${topSkill}` : role)
+                            : (r.target || "Software Engineer");
+                          setJobSearchQuery(q);
+                        }}
+                          style={{ padding: "7px 10px", borderRadius: 5, border: `1px solid ${C.border}`, background: C.cream, color: C.ink, display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.15s" }}>
+                          <Search size={13} /> {!isMobile && "Jobs"}
+                        </button>
+                      </div>
                       <Link href={`/builder?id=${r.id}`}
                         style={{ padding: "7px 10px", borderRadius: 5, border: `1px solid ${C.border}`, background: C.cream, color: C.ink, display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, textDecoration: "none" }}>
                         <Edit3 size={13} /> {!isMobile && "Edit"}
@@ -366,6 +382,8 @@ export default function Dashboard() {
                 ))}
               </div>
             </section>
+            
+            {jobSearchQuery && <JobsModal query={jobSearchQuery} onClose={() => setJobSearchQuery("")} />}
 
             {/* ── CAREER TOOLS ─────────────────────────────── */}
             <section>
@@ -376,8 +394,9 @@ export default function Dashboard() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
                   { href: "/tools/roast", icon: <Flame size={18}/>, label: "Roast my CV", sub: "Brutally honest AI feedback that shows exactly what to fix.", badge: "Viral", badgeColor: C.ember },
+                  { href: "/jobs", icon: <Briefcase size={18}/>, label: "Smart Job Match", sub: "Live job matches based directly on your CV skills.", badge: "New", badgeColor: "#2563EB" },
                   { href: "/tools/interview", icon: <Brain size={18}/>, label: "Interview Simulator", sub: "AI-generated questions tailored for grad and tech roles.", badge: "Popular", badgeColor: "#7c5cbf" },
-                  { href: "/tools/job-match", icon: <Target size={18}/>, label: "Job Matcher", sub: "Paste a job description and get a keyword gap analysis.", badge: "New", badgeColor: C.forest },
+                  { href: "/tools/job-match", icon: <Target size={18}/>, label: "Job Matcher", sub: "Paste a job description and get a keyword gap analysis.", badge: "Pro", badgeColor: C.forest },
                 ].map(t => (
                   <Link key={t.label} href={t.href} style={{ textDecoration: "none" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "18px 20px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, transition: "border-color .15s" }}
